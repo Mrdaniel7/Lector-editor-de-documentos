@@ -1073,6 +1073,8 @@
         const updatePreview = () => {
           const html = marked.parse(textarea.value);
           preview.innerHTML = DOMPurify.sanitize(html);
+          fileMeta.blob = new Blob([textarea.value], { type: fileMeta.type || 'text/markdown' });
+          fileMeta.lastModified = Date.now();
           App.instance.markDirty(fileMeta.id, true);
         };
         textarea.addEventListener('input', updatePreview);
