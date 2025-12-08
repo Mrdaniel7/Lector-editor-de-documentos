@@ -1,0 +1,1998 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Universal DocViewer</title>
+  <style>
+    :root {
+      --bg-app: #1e1e1e;
+      --bg-panel: #252526;
+      --bg-active: #1e1e1e;
+      --text-primary: #d4d4d4;
+      --text-dim: #858585;
+      --accent: #007acc;
+      --border: #3e3e42;
+      --error: #f48771;
+      --shadow-elevate: 0 10px 30px rgba(0, 0, 0, 0.25);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: "Inter", "Segoe UI", "San Francisco", sans-serif;
+      background: var(--bg-app);
+      color: var(--text-primary);
+      height: 100vh;
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body.dragging #app-shell {
+      outline: 2px dashed var(--accent);
+      outline-offset: -6px;
+      background: rgba(0, 122, 204, 0.06);
+    }
+
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg-app);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--bg-panel);
+      border-radius: 4px;
+    }
+
+    #toast-container {
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 200;
+    }
+
+    .toast {
+      min-width: 220px;
+      max-width: 320px;
+      padding: 10px 12px;
+      border-radius: 6px;
+      color: #fff;
+      font-size: 12px;
+      box-shadow: var(--shadow-elevate);
+      animation: slideIn 0.2s ease, fadeOut 0.3s ease 3.2s forwards;
+      border: 1px solid var(--border);
+    }
+
+    .toast.info { background: rgba(0, 122, 204, 0.8); }
+    .toast.success { background: rgba(16, 185, 129, 0.85); }
+    .toast.error { background: rgba(244, 135, 113, 0.9); }
+
+    @keyframes slideIn {
+      from { transform: translateY(10px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    #app-shell {
+      display: grid;
+      grid-template-rows: 35px 1fr 22px;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    header {
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 12px;
+      font-size: 13px;
+    }
+
+    header .brand {
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 0.4px;
+    }
+
+    header button, .pill {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+      font-size: 12px;
+    }
+
+    header button:hover, .pill:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: var(--accent);
+    }
+
+    .json-tree {
+      font-family: "JetBrains Mono", monospace;
+      padding: 10px;
+      overflow: auto;
+      height: 100%;
+    }
+
+    .json-tree ul {
+      list-style: none;
+      margin-left: 14px;
+      padding-left: 10px;
+      border-left: 1px dashed var(--border);
+    }
+
+    .json-node {
+      cursor: default;
+      line-height: 1.6;
+    }
+
+    .json-node .toggle {
+      display: inline-block;
+      width: 12px;
+      color: var(--accent);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .json-node .key { color: #9cdcfe; }
+    .json-node .value { color: #ce9178; }
+    .json-node .type { color: var(--text-dim); }
+    .json-node .editable { border-bottom: 1px dashed var(--border); }
+    .collapsed > ul { display: none; }
+
+    .pdf-toolbar {
+      display: flex;
+      gap: 8px;
+      padding: 8px;
+      position: sticky;
+      top: 0;
+      background: linear-gradient(180deg, rgba(30,30,30,0.98), rgba(30,30,30,0.85));
+      z-index: 5;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .pdf-page {
+      position: relative;
+      margin: 12px auto;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.35);
+      background: #111;
+    }
+
+    .pdf-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 10;
+      cursor: crosshair;
+    }
+
+    .pdf-organizer-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 10px;
+    }
+
+    .pdf-organizer-grid canvas {
+      width: 100%;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+      border: 1px solid var(--border);
+      background: #0f0f0f;
+    }
+
+    .image-toolbar {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      display: flex;
+      gap: 8px;
+      z-index: 6;
+      background: rgba(0, 0, 0, 0.55);
+      padding: 6px 8px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+
+    .visual-diff {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      height: 70vh;
+    }
+
+    .diff-pane {
+      background: #111;
+      border: 1px solid var(--border);
+      padding: 8px;
+      overflow: auto;
+      font-family: "JetBrains Mono", monospace;
+      white-space: pre-wrap;
+    }
+
+    .diff-line.added { background: rgba(0, 100, 0, 0.35); }
+    .diff-line.removed { background: rgba(100, 0, 0, 0.35); }
+    .diff-line.neutral { color: var(--text-dim); }
+
+    main {
+      display: grid;
+      grid-template-rows: 36px 1fr;
+      overflow: hidden;
+    }
+
+    .tab-bar {
+      display: flex;
+      align-items: stretch;
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border);
+      padding-left: 8px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .tabs-container {
+      display: flex;
+      gap: 6px;
+      flex: 1 1 auto;
+      overflow: hidden;
+      align-items: center;
+    }
+
+    .tab {
+      position: relative;
+      padding: 8px 30px 8px 12px;
+      background: #1a1a1a;
+      color: var(--text-dim);
+      border: 1px solid var(--border);
+      border-bottom: none;
+      border-radius: 6px 6px 0 0;
+      min-width: 120px;
+      max-width: 220px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .tab.active {
+      background: var(--bg-active);
+      color: var(--text-primary);
+      border-top: 2px solid var(--accent);
+      padding-top: 7px;
+    }
+
+    .tab:hover .close {
+      opacity: 1;
+    }
+
+    .tab .dirty-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #e6b400;
+      display: inline-block;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+
+    .tab .close {
+      position: absolute;
+      right: 8px;
+      top: 8px;
+      opacity: 0;
+      transition: opacity 0.2s;
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+
+    .tab.active .close {
+      opacity: 1;
+      color: var(--text-primary);
+    }
+
+    .tab-overflow {
+      width: 32px;
+      text-align: center;
+      cursor: pointer;
+      font-weight: bold;
+      border-left: 1px solid var(--border);
+      background: rgba(0,0,0,0.2);
+    }
+
+    .tab-overflow-menu {
+      position: absolute;
+      right: 8px;
+      top: 32px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-elevate);
+      min-width: 180px;
+      z-index: 40;
+    }
+
+    .tab-overflow-menu button {
+      width: 100%;
+      text-align: left;
+      padding: 8px 12px;
+      background: transparent;
+      border: none;
+      color: var(--text-primary);
+      cursor: pointer;
+    }
+
+    .tab-overflow-menu button:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    .sidebar {
+      background: #1b1b1b;
+      border-right: 1px solid var(--border);
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      overflow-y: auto;
+    }
+
+    .sidebar section h4 {
+      color: var(--text-dim);
+      margin-bottom: 6px;
+      font-size: 12px;
+      letter-spacing: 0.4px;
+    }
+
+    .sidebar .file-item {
+      padding: 6px 8px;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+    }
+
+    .sidebar .file-item:hover {
+      border-color: var(--border);
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .content-region {
+      position: relative;
+      overflow: hidden;
+      background: var(--bg-active);
+    }
+
+    .content-scroll {
+      height: 100%;
+      overflow: auto;
+      padding: 12px;
+    }
+
+    .statusbar {
+      background: var(--bg-panel);
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 10px;
+      gap: 10px;
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+
+    .statusbar .detail {
+      margin-left: auto;
+      color: var(--text-primary);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .statusbar .meta {
+      color: var(--text-dim);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .statusbar .spinner {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      animation: spin 0.8s linear infinite;
+      display: none;
+    }
+
+    .statusbar .spinner.active {
+      display: inline-block;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      backdrop-filter: blur(2px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .modal {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      min-width: 360px;
+      max-width: 640px;
+      box-shadow: var(--shadow-elevate);
+    }
+
+    .modal header {
+      background: transparent;
+      border: none;
+      padding: 0 0 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 14px;
+      background: transparent;
+      border: none;
+      padding: 0;
+    }
+
+    .context-menu {
+      position: fixed;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-elevate);
+      display: none;
+      flex-direction: column;
+      min-width: 200px;
+      z-index: 90;
+    }
+
+    .context-menu button {
+      background: transparent;
+      border: none;
+      color: var(--text-primary);
+      padding: 8px 12px;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .context-menu button:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .split-view {
+      display: flex;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    .split-pane {
+      flex: 1 1 auto;
+      overflow: auto;
+    }
+
+    .split-resizer {
+      width: 6px;
+      cursor: col-resize;
+      background: var(--border);
+    }
+
+    .mobile-toggle {
+      position: absolute;
+      bottom: 12px;
+      right: 12px;
+      padding: 10px 12px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--bg-panel);
+      color: var(--text-primary);
+      box-shadow: var(--shadow-elevate);
+      cursor: pointer;
+      display: none;
+      z-index: 6;
+    }
+
+    .csv-container {
+      overflow: auto;
+      max-height: 100%;
+    }
+
+    .json-tree ul { list-style: none; padding-left: 16px; }
+    .json-tree li { margin: 2px 0; cursor: pointer; }
+    .json-tree .collapsed > ul { display: none; }
+
+    .hidden { display: none !important; }
+
+    @media (max-width: 768px) {
+      .split-view {
+        position: relative;
+        flex-direction: column;
+      }
+      .split-view .split-resizer { display: none; }
+      .split-view .split-pane.preview-pane { display: none; }
+      .split-view.show-preview .split-pane.preview-pane { display: block; }
+      .split-view.show-preview .split-pane.editor-pane { display: none; }
+      .mobile-toggle { display: block; }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @media (max-width: 900px) {
+      .workspace { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app-shell">
+    <header>
+      <span class="brand">Universal DocViewer</span>
+      <button id="open-file">Abrir Archivo</button>
+      <button id="global-search">Buscar (Ctrl+F)</button>
+      <button id="compare-files">Comparar</button>
+      <button id="export-btn">Exportar</button>
+      <button id="settings-btn">Ajustes</button>
+      <button id="help-btn">?</button>
+      <span class="pill" id="session-info">Sesión lista</span>
+    </header>
+    <main>
+      <div class="tab-bar">
+        <div class="tabs-container" id="tabs"></div>
+        <div class="tab-overflow" id="overflow-trigger">…</div>
+        <div class="tab-overflow-menu hidden" id="overflow-menu"></div>
+      </div>
+      <div class="workspace">
+        <aside class="sidebar" id="sidebar">
+          <section>
+            <h4>Archivos recientes</h4>
+            <div id="recent-list"></div>
+          </section>
+          <section>
+            <h4>Pestañas abiertas</h4>
+            <div id="open-list"></div>
+          </section>
+          <section>
+            <h4>Controles</h4>
+            <button id="panic-btn" class="pill" style="border-color: var(--error); color: var(--error);">Botón del Pánico</button>
+          </section>
+        </aside>
+        <section class="content-region" id="content-region">
+          <div class="content-scroll" id="content-scroll">
+            <p style="color: var(--text-dim);">Arrastra un archivo o usa "Abrir Archivo" para comenzar.</p>
+          </div>
+        </section>
+      </div>
+    </main>
+    <footer class="statusbar">
+      <div class="spinner" id="loader"></div>
+      <span id="status-text">Listo</span>
+      <span id="zoom-indicator">Zoom 100%</span>
+      <span id="status-meta" class="meta"></span>
+      <span id="status-detail" class="detail"></span>
+    </footer>
+  </div>
+
+  <div class="modal-backdrop" id="modal-backdrop">
+    <div class="modal" role="dialog" aria-modal="true">
+      <header><h3 id="modal-title">Modal</h3><button id="modal-close">✕</button></header>
+      <div id="modal-body"></div>
+      <footer id="modal-actions"></footer>
+    </div>
+  </div>
+
+  <div class="context-menu" id="context-menu"></div>
+  <div id="toast-container"></div>
+
+  <input type="file" id="file-input" class="hidden" multiple />
+
+  <script type="module">
+    const CONFIG_KEY = 'app_config';
+    const SESSION_KEY = 'session_index';
+
+    class PluginLoader {
+      constructor() {
+        this.cache = new Map();
+        this.sources = {
+          pdfjs: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
+          pdflib: 'https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js',
+          monaco: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.52.0/min/vs/loader.min.js',
+          marked: 'https://cdnjs.cloudflare.com/ajax/libs/marked/11.2.0/marked.min.js',
+          dompurify: 'https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.5/purify.min.js',
+          papaparse: 'https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js',
+          mammoth: 'https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.8.0/mammoth.browser.min.js',
+          sheetjs: 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
+          jsdiff: 'https://cdnjs.cloudflare.com/ajax/libs/diff/5.2.0/diff.min.js',
+          pyodide: 'https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js'
+        };
+      }
+      static get instance() {
+        if (!window.__pluginLoader) window.__pluginLoader = new PluginLoader();
+        return window.__pluginLoader;
+      }
+      async load(name) {
+        if (this.cache.has(name)) return this.cache.get(name);
+        const src = this.sources[name];
+        if (!src) throw new Error('Plugin no registrado: ' + name);
+        UIManager.setLoading(true, `Cargando ${name}...`);
+        const promise = new Promise((resolve, reject) => {
+          const s = document.createElement('script');
+          s.src = src;
+          s.onload = () => { UIManager.setLoading(false); resolve(true); };
+          s.onerror = (e) => { UIManager.setLoading(false); reject(e); };
+          document.head.appendChild(s);
+        });
+        this.cache.set(name, promise);
+        return promise;
+      }
+    }
+
+    class FileSystem {
+      constructor() {
+        this.dbName = 'DocViewerDB_v1';
+        this.storeName = 'files';
+        this.dbPromise = null;
+      }
+
+      async init() {
+        if (this.dbPromise) return this.dbPromise;
+        this.dbPromise = new Promise((resolve, reject) => {
+          const request = indexedDB.open(this.dbName, 1);
+          request.onupgradeneeded = () => {
+            const db = request.result;
+            if (!db.objectStoreNames.contains(this.storeName)) {
+              const store = db.createObjectStore(this.storeName, { keyPath: 'id' });
+              store.createIndex('byName', 'name', { unique: false });
+            }
+          };
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        });
+        return this.dbPromise;
+      }
+
+      async putFile(file) {
+        const db = await this.init();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(this.storeName, 'readwrite');
+          tx.oncomplete = () => resolve(file);
+          tx.onerror = () => reject(tx.error);
+          tx.objectStore(this.storeName).put(file);
+        });
+      }
+
+      async getFile(id) {
+        const db = await this.init();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(this.storeName, 'readonly');
+          const req = tx.objectStore(this.storeName).get(id);
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+      }
+
+      async deleteFile(id) {
+        const db = await this.init();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(this.storeName, 'readwrite');
+          tx.oncomplete = () => resolve(true);
+          tx.onerror = () => reject(tx.error);
+          tx.objectStore(this.storeName).delete(id);
+        });
+      }
+
+      async listFiles() {
+        const db = await this.init();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(this.storeName, 'readonly');
+          const req = tx.objectStore(this.storeName).getAll();
+          req.onsuccess = () => resolve(req.result || []);
+          req.onerror = () => reject(req.error);
+        });
+      }
+    }
+
+    class UIManager {
+      static contextTargetId = null;
+      static setup() {
+        this.tabsEl = document.getElementById('tabs');
+        this.overflowMenu = document.getElementById('overflow-menu');
+        this.overflowTrigger = document.getElementById('overflow-trigger');
+        this.contentScroll = document.getElementById('content-scroll');
+        this.recentList = document.getElementById('recent-list');
+        this.openList = document.getElementById('open-list');
+        this.modalBackdrop = document.getElementById('modal-backdrop');
+        this.modalBody = document.getElementById('modal-body');
+        this.modalActions = document.getElementById('modal-actions');
+        this.modalTitle = document.getElementById('modal-title');
+        this.statusText = document.getElementById('status-text');
+        this.loader = document.getElementById('loader');
+        this.contextMenu = document.getElementById('context-menu');
+        this.zoomIndicator = document.getElementById('zoom-indicator');
+        this.statusMeta = document.getElementById('status-meta');
+        this.statusDetail = document.getElementById('status-detail');
+        this.toastContainer = document.getElementById('toast-container');
+        this.attachListeners();
+      }
+
+      static attachListeners() {
+        document.getElementById('modal-close').onclick = () => this.hideModal();
+        this.overflowTrigger.onclick = () => this.toggleOverflowMenu();
+        document.addEventListener('click', (e) => {
+          if (!this.overflowMenu.contains(e.target) && !this.overflowTrigger.contains(e.target)) {
+            this.overflowMenu.classList.add('hidden');
+          }
+          if (!this.contextMenu.contains(e.target)) this.contextMenu.style.display = 'none';
+        });
+        document.addEventListener('contextmenu', (e) => {
+          if (e.defaultPrevented) return;
+          e.preventDefault();
+          UIManager.contextTargetId = App.instance.activeTabId;
+          this.showContextMenu(e.clientX, e.clientY);
+        });
+        window.addEventListener('resize', () => {
+          this.renderTabs(App.instance.openTabs);
+          if (window.monaco && EditorFactory.editors) {
+            EditorFactory.editors.forEach(ed => ed.layout());
+          }
+        });
+      }
+
+      static setLoading(state, text = 'Cargando...') {
+        this.loader.classList.toggle('active', state);
+        this.statusText.textContent = state ? text : 'Listo';
+      }
+
+      static setZoom(percent) {
+        this.zoomIndicator.textContent = `Zoom ${percent}%`;
+      }
+
+      static updateStatusDetail(text = '') {
+        this.statusDetail.textContent = text;
+      }
+
+      static updateStatusMeta(text = '') {
+        this.statusMeta.textContent = text;
+      }
+
+      static renderTabs(tabs) {
+        this.tabsEl.innerHTML = '';
+        const maxTabs = Math.floor((this.tabsEl.clientWidth || window.innerWidth) / 140) - 1;
+        const visibleTabs = tabs.slice(0, Math.max(maxTabs, 1));
+        const overflow = tabs.slice(Math.max(maxTabs, 1));
+        visibleTabs.forEach(tab => this.tabsEl.appendChild(this.createTabEl(tab)));
+        this.overflowMenu.innerHTML = '';
+        overflow.forEach(tab => {
+          const btn = document.createElement('button');
+          btn.textContent = tab.isDirty ? `* ${tab.name}` : tab.name;
+          btn.onclick = () => App.instance.activateTab(tab.id);
+          this.overflowMenu.appendChild(btn);
+        });
+      }
+
+      static createTabEl(tab) {
+        const el = document.createElement('div');
+        el.className = 'tab' + (tab.id === App.instance.activeTabId ? ' active' : '');
+        el.dataset.id = tab.id;
+        el.innerHTML = `${tab.isDirty ? '<span class="dirty-dot"></span>' : ''}${tab.name}<span class="close">✕</span>`;
+        el.onclick = () => App.instance.activateTab(tab.id);
+        el.oncontextmenu = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          UIManager.contextTargetId = tab.id;
+          UIManager.showContextMenu(e.clientX, e.clientY);
+        };
+        el.querySelector('.close').onclick = (ev) => { ev.stopPropagation(); App.instance.closeTab(tab.id); };
+        return el;
+      }
+
+      static toggleOverflowMenu() {
+        this.overflowMenu.classList.toggle('hidden');
+      }
+
+      static updateSidebar(files, openTabs) {
+        this.recentList.innerHTML = '';
+        files.slice(-10).forEach(f => {
+          const item = document.createElement('div');
+          item.className = 'file-item';
+          item.textContent = f.name;
+          item.onclick = () => App.instance.openFromDB(f.id);
+          this.recentList.prepend(item);
+        });
+        this.openList.innerHTML = '';
+        openTabs.forEach(f => {
+          const item = document.createElement('div');
+          item.className = 'file-item';
+          item.textContent = f.name;
+          item.onclick = () => App.instance.activateTab(f.id);
+          this.openList.appendChild(item);
+        });
+      }
+
+      static setContent(node) {
+        this.contentScroll.innerHTML = '';
+        this.contentScroll.appendChild(node);
+      }
+
+      static showModal(title, bodyNode, actions = []) {
+        this.modalTitle.textContent = title;
+        this.modalBody.innerHTML = '';
+        this.modalBody.appendChild(bodyNode);
+        this.modalActions.innerHTML = '';
+        actions.forEach(({ text, variant = 'default', onClick }) => {
+          const btn = document.createElement('button');
+          btn.textContent = text;
+          if (variant === 'danger') {
+            btn.style.color = 'var(--error)';
+            btn.style.borderColor = 'var(--error)';
+          }
+          btn.onclick = onClick;
+          this.modalActions.appendChild(btn);
+        });
+        this.modalBackdrop.style.display = 'flex';
+      }
+
+      static hideModal() { this.modalBackdrop.style.display = 'none'; }
+
+      static showInput(title, placeholder = '', initialValue = '') {
+        return new Promise((resolve) => {
+          const wrapper = document.createElement('div');
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.placeholder = placeholder;
+          input.value = initialValue;
+          input.style.width = '100%';
+          input.style.padding = '8px';
+          input.style.marginTop = '8px';
+          wrapper.appendChild(input);
+          const submit = () => { const val = input.value.trim(); this.hideModal(); resolve(val || null); };
+          input.onkeydown = (e) => { if (e.key === 'Enter') submit(); };
+          this.showModal(title, wrapper, [
+            { text: 'Cancelar', onClick: () => { this.hideModal(); resolve(null); } },
+            { text: 'Aceptar', onClick: submit }
+          ]);
+          setTimeout(() => input.focus(), 10);
+        });
+      }
+
+      static showConfirm(title, message) {
+        return new Promise((resolve) => {
+          const body = document.createElement('div');
+          body.textContent = message;
+          this.showModal(title, body, [
+            { text: 'Cancelar', onClick: () => { this.hideModal(); resolve(false); } },
+            { text: 'Confirmar', onClick: () => { this.hideModal(); resolve(true); } }
+          ]);
+        });
+      }
+
+      static showContextMenu(x, y) {
+        const menu = this.contextMenu;
+        menu.innerHTML = '';
+        const targetId = UIManager.contextTargetId || App.instance.activeTabId;
+        [
+          { label: 'Cerrar pestaña', action: () => App.instance.closeTab(targetId) },
+          { label: 'Cerrar otras', action: () => App.instance.closeOthers(targetId) },
+          { label: 'Descargar', action: () => App.instance.exportFile(targetId) },
+          { label: 'Duplicar', action: () => App.instance.duplicateTab(targetId) },
+          { label: 'Renombrar', action: () => App.instance.renameTab(targetId) },
+          { label: 'Propiedades', action: () => App.instance.showProps(targetId) }
+        ].forEach(item => {
+          const btn = document.createElement('button');
+          btn.textContent = item.label;
+          btn.onclick = () => { item.action(); menu.style.display = 'none'; UIManager.contextTargetId = null; };
+          menu.appendChild(btn);
+        });
+        menu.style.left = `${x}px`;
+        menu.style.top = `${y}px`;
+        menu.style.display = 'flex';
+      }
+
+      static showToast(message, type = 'info') {
+        if (!this.toastContainer) return;
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.textContent = message;
+        toast.onclick = () => toast.remove();
+        this.toastContainer.appendChild(toast);
+        setTimeout(() => toast.remove(), 3500);
+      }
+    }
+
+    class EditorFactory {
+      static async createViewer(fileMeta) {
+        const ext = (fileMeta.name.split('.').pop() || '').toLowerCase();
+        if (['md', 'markdown'].includes(ext)) return this.createMarkdownView(fileMeta);
+        if (['json'].includes(ext)) return this.createJsonView(fileMeta);
+        if (['js','ts','css','html','java','py'].includes(ext)) return this.createCodeView(fileMeta);
+        if (['pdf'].includes(ext)) return this.createPdfView(fileMeta);
+        if (['csv'].includes(ext)) return this.createCsvView(fileMeta);
+        if (['xls','xlsx','xlsm'].includes(ext)) return this.createExcelView(fileMeta);
+        if (['doc','docx'].includes(ext)) return this.createWordView(fileMeta);
+        if (['png','jpg','jpeg','gif','webp','svg'].includes(ext)) return this.createImageView(fileMeta);
+        return this.createHexView(fileMeta);
+      }
+
+      static editors = new Set();
+
+      static async createJsonView(fileMeta) {
+        const container = document.createElement('div');
+        container.className = 'json-tree';
+        const text = fileMeta.blob ? await fileMeta.blob.text() : '{}';
+        let data;
+        try { data = JSON.parse(text); } catch (e) { container.textContent = 'JSON inválido'; return container; }
+
+        const renderNode = (key, value) => {
+          const node = document.createElement('li');
+          node.className = 'json-node';
+          const toggle = document.createElement('span');
+          toggle.className = 'toggle';
+          const keySpan = document.createElement('span');
+          keySpan.className = 'key';
+          keySpan.textContent = key !== null ? `${key}: ` : '';
+          const valueSpan = document.createElement('span');
+          valueSpan.className = 'value';
+          const typeSpan = document.createElement('span');
+          typeSpan.className = 'type';
+
+          const wrapper = document.createElement('div');
+          wrapper.append(toggle, keySpan);
+
+          if (typeof value === 'object' && value !== null) {
+            toggle.textContent = '▾';
+            const childList = document.createElement('ul');
+            const isArray = Array.isArray(value);
+            typeSpan.textContent = isArray ? '[ ]' : '{ }';
+            wrapper.append(typeSpan);
+            Object.entries(value).forEach(([k, v]) => childList.appendChild(renderNode(k, v)));
+            node.append(wrapper, childList);
+            toggle.onclick = () => {
+              node.classList.toggle('collapsed');
+              toggle.textContent = node.classList.contains('collapsed') ? '▸' : '▾';
+            };
+          } else {
+            toggle.textContent = '';
+            valueSpan.textContent = value;
+            valueSpan.contentEditable = true;
+            valueSpan.classList.add('editable');
+            valueSpan.ondblclick = () => document.execCommand('selectAll', false, null);
+            valueSpan.onblur = async () => {
+              const newVal = valueSpan.textContent;
+              const parsed = isNaN(Number(newVal)) ? newVal : Number(newVal);
+              const assign = (obj, path, val) => {
+                if (!path.length) return val;
+                const [p, ...rest] = path;
+                const clone = Array.isArray(obj) ? [...obj] : { ...obj };
+                const key = Array.isArray(obj) ? Number(p) : p;
+                clone[key] = assign(clone[key], rest, val);
+                return clone;
+              };
+              data = assign(data, node.dataset.path.split('.'), parsed);
+              const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+              fileMeta.blob = blob;
+              fileMeta.isDirty = false;
+              await App.instance.fs.putFile(fileMeta);
+              App.instance.persistSession();
+            };
+            wrapper.append(valueSpan);
+            node.append(wrapper);
+          }
+          return node;
+        };
+
+        const buildTree = (obj) => {
+          const root = document.createElement('ul');
+          Object.entries(obj).forEach(([k, v]) => {
+            const li = renderNode(k, v);
+            li.dataset.path = k;
+            root.appendChild(li);
+          });
+          return root;
+        };
+
+        const tree = buildTree(data);
+        tree.querySelectorAll('li').forEach(li => {
+          const parentPath = li.parentElement.closest('li')?.dataset.path;
+          if (parentPath) li.dataset.path = `${parentPath}.${li.dataset.path}`;
+        });
+        container.appendChild(tree);
+        return container;
+      }
+
+      static async createMarkdownView(fileMeta) {
+        await PluginLoader.instance.load('marked');
+        await PluginLoader.instance.load('dompurify');
+        const container = document.createElement('div');
+        container.className = 'split-view';
+        container.style.position = 'relative';
+        const left = document.createElement('div');
+        left.className = 'split-pane editor-pane';
+        const right = document.createElement('div');
+        right.className = 'split-pane preview-pane';
+        const resizer = document.createElement('div');
+        resizer.className = 'split-resizer';
+        const textarea = document.createElement('textarea');
+        textarea.style.width = '100%';
+        textarea.style.height = '100%';
+        textarea.style.background = '#111';
+        textarea.style.color = 'var(--text-primary)';
+        textarea.style.border = 'none';
+        textarea.style.fontFamily = 'Fira Code, JetBrains Mono, Consolas, monospace';
+        textarea.style.fontVariantLigatures = 'common-ligatures';
+        const preview = document.createElement('div');
+        preview.style.padding = '12px';
+        preview.style.overflow = 'auto';
+        right.appendChild(preview);
+        left.appendChild(textarea);
+        container.append(left, resizer, right);
+        const toggle = document.createElement('button');
+        toggle.className = 'mobile-toggle';
+        toggle.textContent = '👁️';
+        toggle.title = 'Alternar vista previa';
+        toggle.onclick = () => {
+          container.classList.toggle('show-preview');
+          toggle.textContent = container.classList.contains('show-preview') ? '✏️' : '👁️';
+        };
+        container.appendChild(toggle);
+        const updatePreview = () => {
+          const html = marked.parse(textarea.value);
+          preview.innerHTML = DOMPurify.sanitize(html);
+          App.instance.markDirty(fileMeta.id, true);
+        };
+        textarea.addEventListener('input', updatePreview);
+        let dragging = false;
+        resizer.addEventListener('mousedown', () => dragging = true);
+        window.addEventListener('mouseup', () => dragging = false);
+        window.addEventListener('mousemove', (e) => {
+          if (!dragging) return;
+          const pct = e.clientX / container.clientWidth;
+          left.style.flex = pct;
+          right.style.flex = 1 - pct;
+        });
+        const blob = fileMeta.blob;
+        if (blob) {
+          const text = await blob.text();
+          textarea.value = text;
+          updatePreview();
+        }
+        return container;
+      }
+
+      static async createCodeView(fileMeta) {
+        await PluginLoader.instance.load('monaco');
+        const container = document.createElement('div');
+        container.style.height = '100%';
+        const editorHost = document.createElement('div');
+        editorHost.style.height = '60%';
+        const consoleHost = document.createElement('div');
+        consoleHost.style.height = '40%';
+        consoleHost.style.background = '#111';
+        consoleHost.style.borderTop = '1px solid var(--border)';
+        consoleHost.style.padding = '8px';
+        consoleHost.style.overflow = 'auto';
+        const toolbar = document.createElement('div');
+        toolbar.style.display = 'flex';
+        toolbar.style.gap = '8px';
+        toolbar.style.padding = '8px';
+        toolbar.style.borderBottom = '1px solid var(--border)';
+        const runBtn = document.createElement('button');
+        runBtn.textContent = 'Run';
+        toolbar.appendChild(runBtn);
+        container.append(toolbar, editorHost, consoleHost);
+
+        // Monaco bootstrap
+        require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.52.0/min/vs' } });
+        require(['vs/editor/editor.main'], async () => {
+          const text = fileMeta.blob ? await fileMeta.blob.text() : '';
+          const editor = monaco.editor.create(editorHost, {
+            value: text,
+            language: EditorFactory.mapLanguage(fileMeta.name),
+            theme: 'vs-dark',
+            minimap: { enabled: false },
+            wordWrap: 'off',
+            fontLigatures: true,
+            automaticLayout: true
+          });
+          EditorFactory.editors.add(editor);
+          runBtn.onclick = () => EditorFactory.runCode(editor.getValue(), fileMeta.name, consoleHost);
+          editor.onDidBlurEditorText(() => App.instance.saveContent(fileMeta.id, editor.getValue()));
+          const updateCursor = () => {
+            const pos = editor.getPosition();
+            if (pos) UIManager.updateStatusDetail(`Ln ${pos.lineNumber}, Col ${pos.column}`);
+          };
+          editor.onDidChangeCursorPosition(updateCursor);
+          updateCursor();
+        });
+        return container;
+      }
+
+      static mapLanguage(name) {
+        const ext = name.split('.').pop();
+        const mapping = { js: 'javascript', ts: 'typescript', css: 'css', html: 'html', json: 'json', java: 'java', py: 'python' };
+        return mapping[ext] || 'plaintext';
+      }
+
+      static runCode(code, name, consoleHost) {
+        consoleHost.innerHTML = '';
+        const log = (msg) => {
+          const line = document.createElement('div');
+          line.textContent = msg;
+          consoleHost.appendChild(line);
+        };
+        if (name.endsWith('.py')) {
+          PluginLoader.instance.load('pyodide').then(async () => {
+            const py = await loadPyodide();
+            const result = await py.runPythonAsync(code);
+            log(result);
+          }).catch(err => log('Error Pyodide: ' + err));
+          return;
+        }
+        if (name.endsWith('.java')) {
+          log('Ejecución deshabilitada para Java (solo lectura).');
+          return;
+        }
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        document.body.appendChild(iframe);
+        const script = document.createElement('script');
+        const logs = [];
+        iframe.contentWindow.console.log = (...args) => { logs.push(args.join(' ')); };
+        script.textContent = code;
+        iframe.contentDocument.body.appendChild(script);
+        logs.forEach(log);
+        setTimeout(() => iframe.remove(), 50);
+      }
+
+      static async createPdfView(fileMeta) {
+        await PluginLoader.instance.load('pdfjs');
+        const container = document.createElement('div');
+        container.style.height = '100%';
+        container.style.overflow = 'auto';
+        container.style.position = 'relative';
+        const toolbar = document.createElement('div');
+        toolbar.className = 'pdf-toolbar';
+        const orgBtn = document.createElement('button');
+        orgBtn.textContent = 'Organizar páginas';
+        const saveBtn = document.createElement('button');
+        saveBtn.textContent = 'Guardar PDF';
+        const info = document.createElement('span');
+        info.textContent = 'Renderizando...';
+        toolbar.append(orgBtn, saveBtn, info);
+        const pagesWrap = document.createElement('div');
+        container.append(toolbar, pagesWrap);
+
+        const url = URL.createObjectURL(fileMeta.blob);
+        const pdf = await pdfjsLib.getDocument(url).promise;
+        const pageOrder = Array.from({ length: pdf.numPages }, (_, i) => i + 1);
+        const pageNodes = new Map();
+        const strokes = new Map();
+        UIManager.updateStatusDetail(`${pdf.numPages} págs`);
+
+        const renderPage = async (pageNumber) => {
+          const wrapper = pageNodes.get(pageNumber) || document.createElement('div');
+          wrapper.className = 'pdf-page';
+          wrapper.dataset.page = pageNumber;
+          if (!pageNodes.has(pageNumber)) {
+            const canvas = document.createElement('canvas');
+            const overlay = document.createElement('canvas');
+            overlay.className = 'pdf-overlay';
+            wrapper.append(canvas, overlay);
+            wrapper.dataset.rendered = 'false';
+            pageNodes.set(pageNumber, wrapper);
+          }
+          const canvas = wrapper.querySelector('canvas:not(.pdf-overlay)');
+          const overlay = wrapper.querySelector('.pdf-overlay');
+          if (wrapper.dataset.rendered === 'true') return;
+          const page = await pdf.getPage(pageNumber);
+          const viewport = page.getViewport({ scale: 1.25 });
+          canvas.height = viewport.height;
+          canvas.width = viewport.width;
+          overlay.height = viewport.height;
+          overlay.width = viewport.width;
+          await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+          wrapper.dataset.rendered = 'true';
+
+          // annotation drawing
+          const overlayCtx = overlay.getContext('2d');
+          let drawing = false;
+          let last = null;
+          overlay.onmousedown = (e) => { drawing = true; last = { x: e.offsetX, y: e.offsetY }; overlayCtx.beginPath(); overlayCtx.moveTo(last.x, last.y); };
+          overlay.onmousemove = (e) => {
+            if (!drawing) return;
+            overlayCtx.lineWidth = 2;
+            overlayCtx.strokeStyle = '#fffa';
+            overlayCtx.lineTo(e.offsetX, e.offsetY);
+            overlayCtx.stroke();
+            last = { x: e.offsetX, y: e.offsetY };
+          };
+          overlay.onmouseup = overlay.onmouseleave = () => {
+            if (!drawing) return;
+            drawing = false;
+            const dataUrl = overlay.toDataURL();
+            strokes.set(pageNumber, dataUrl);
+            App.instance.markDirty(fileMeta.id, true);
+          };
+          overlay.ondblclick = async (e) => {
+            const text = await UIManager.showInput('Añadir anotación', 'Texto a colocar', '');
+            if (!text) return;
+            overlayCtx.fillStyle = '#fff';
+            overlayCtx.font = '16px Inter, sans-serif';
+            overlayCtx.fillText(text, e.offsetX, e.offsetY);
+            strokes.set(pageNumber, overlay.toDataURL());
+            App.instance.markDirty(fileMeta.id, true);
+          };
+        };
+
+        const ensurePages = () => {
+          pageOrder.forEach(num => {
+            if (!pageNodes.has(num)) {
+              const node = document.createElement('div');
+              node.className = 'pdf-page';
+              node.dataset.page = num;
+              const canvas = document.createElement('canvas');
+              const overlay = document.createElement('canvas');
+              overlay.className = 'pdf-overlay';
+              node.append(canvas, overlay);
+              pageNodes.set(num, node);
+              pagesWrap.appendChild(node);
+            } else {
+              pagesWrap.appendChild(pageNodes.get(num));
+            }
+          });
+        };
+
+        ensurePages();
+        info.textContent = `${pdf.numPages} páginas`;
+
+        const renderVisible = () => {
+          const rect = container.getBoundingClientRect();
+          pageOrder.forEach(num => {
+            const node = pageNodes.get(num);
+            const nodeRect = node.getBoundingClientRect();
+            if (nodeRect.bottom > rect.top - 200 && nodeRect.top < rect.bottom + 200) {
+              renderPage(num);
+            }
+          });
+        };
+
+        container.addEventListener('scroll', renderVisible);
+        setTimeout(renderVisible, 30);
+
+        orgBtn.onclick = async () => {
+          const body = document.createElement('div');
+          const grid = document.createElement('div');
+          grid.className = 'pdf-organizer-grid';
+          body.appendChild(grid);
+          for (const num of pageOrder) {
+            const page = await pdf.getPage(num);
+            const viewport = page.getViewport({ scale: 0.3 });
+            const thumb = document.createElement('canvas');
+            thumb.draggable = true;
+            thumb.dataset.page = num;
+            thumb.height = viewport.height;
+            thumb.width = viewport.width;
+            await page.render({ canvasContext: thumb.getContext('2d'), viewport }).promise;
+            thumb.ondragstart = (e) => e.dataTransfer.setData('text/plain', num);
+            thumb.ondragover = (e) => e.preventDefault();
+          thumb.ondrop = (e) => {
+            e.preventDefault();
+            const from = Number(e.dataTransfer.getData('text/plain'));
+            const to = Number(thumb.dataset.page);
+            const fromIdx = pageOrder.indexOf(from);
+            const toIdx = pageOrder.indexOf(to);
+            pageOrder.splice(fromIdx, 1);
+            pageOrder.splice(toIdx, 0, from);
+            ensurePages();
+            renderVisible();
+            App.instance.markDirty(fileMeta.id, true);
+          };
+          grid.appendChild(thumb);
+        }
+        UIManager.showModal('Organizar páginas', body, [{ text: 'Cerrar', onClick: () => UIManager.hideModal() }]);
+        };
+
+        saveBtn.onclick = async () => {
+          await EditorFactory.savePdfChanges(fileMeta, pageOrder, strokes);
+        };
+
+        return container;
+      }
+
+      static async savePdfChanges(fileMeta, pageOrder, strokesMap) {
+        await PluginLoader.instance.load('pdflib');
+        UIManager.setLoading(true, 'Guardando PDF...');
+        try {
+          const originalBytes = await fileMeta.blob.arrayBuffer();
+          const originalDoc = await PDFLib.PDFDocument.load(originalBytes);
+          const newDoc = await PDFLib.PDFDocument.create();
+          const copyPages = await newDoc.copyPages(originalDoc, pageOrder.map(n => n - 1));
+          for (let i = 0; i < copyPages.length; i++) {
+            const page = copyPages[i];
+            const pageNumber = pageOrder[i];
+            const addedPage = newDoc.addPage(page);
+            const strokeUrl = strokesMap.get(pageNumber);
+            if (strokeUrl) {
+              const pngBytes = await fetch(strokeUrl).then(r => r.arrayBuffer());
+              const pngImage = await newDoc.embedPng(pngBytes);
+              addedPage.drawImage(pngImage, {
+                x: 0,
+                y: 0,
+                width: addedPage.getWidth(),
+                height: addedPage.getHeight()
+              });
+            }
+          }
+          const pdfBytes = await newDoc.save();
+          const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+          fileMeta.blob = blob;
+          fileMeta.lastModified = Date.now();
+          fileMeta.isDirty = false;
+          await App.instance.fs.putFile(fileMeta);
+          App.instance.persistSession();
+          UIManager.renderTabs(App.instance.openTabs);
+          UIManager.showToast('PDF guardado con anotaciones.', 'success');
+        } catch (err) {
+          UIManager.showToast('Error guardando PDF: ' + err, 'error');
+        } finally {
+          UIManager.setLoading(false);
+        }
+      }
+
+      static async createCsvView(fileMeta) {
+        await PluginLoader.instance.load('papaparse');
+        const text = fileMeta.blob ? await fileMeta.blob.text() : '';
+        const { data } = Papa.parse(text, { skipEmptyLines: true });
+        const container = document.createElement('div');
+        container.className = 'csv-container';
+        const search = document.createElement('input');
+        search.placeholder = 'Buscar...';
+        search.style.marginBottom = '8px';
+        const table = document.createElement('table');
+        table.style.width = '100%';
+        table.style.borderCollapse = 'collapse';
+        const renderRows = (rows) => {
+          table.innerHTML = '';
+          rows.forEach((row, idx) => {
+            const tr = document.createElement('tr');
+            row.forEach((cell, cIdx) => {
+              const cellEl = document.createElement(idx === 0 ? 'th' : 'td');
+              cellEl.textContent = cell;
+              cellEl.style.border = '1px solid var(--border)';
+              cellEl.style.padding = '4px';
+              if (idx === 0) cellEl.onclick = () => renderRows([row, ...rows.slice(1).sort((a, b) => (a[cIdx] > b[cIdx] ? 1 : -1))]);
+              tr.appendChild(cellEl);
+            });
+            table.appendChild(tr);
+          });
+        };
+        renderRows(data);
+        search.oninput = () => {
+          const filtered = data.filter(row => row.some(cell => String(cell).toLowerCase().includes(search.value.toLowerCase())));
+          renderRows(filtered.length ? filtered : data);
+        };
+        container.append(search, table);
+        return container;
+      }
+
+      static async createExcelView(fileMeta) {
+        await PluginLoader.instance.load('sheetjs');
+        const container = document.createElement('div');
+        try {
+          const data = new Uint8Array(await fileMeta.blob.arrayBuffer());
+          const workbook = XLSX.read(data, { type: 'array' });
+          const sheetName = workbook.SheetNames[0];
+          const html = XLSX.utils.sheet_to_html(workbook.Sheets[sheetName]);
+          container.innerHTML = `<div style="color: var(--text-dim); margin-bottom:6px;">Modo de baja fidelidad (sin API Key).</div>${html}`;
+          container.querySelectorAll('table').forEach(t => t.style.width = '100%');
+        } catch (err) {
+          container.innerHTML = `<div style="color: var(--error);">Error al procesar Excel: ${err}</div>`;
+        }
+        return container;
+      }
+
+      static async createWordView(fileMeta) {
+        const config = App.instance.getConfig();
+        const container = document.createElement('div');
+        container.innerHTML = '<div style="margin-bottom:6px; color: var(--text-dim);">Intentando conversión...</div>';
+        if (config.apiKeyOfuscada) {
+          try {
+            const resp = await fetch('https://v2.convertapi.com/convert/docx/to/pdf', {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${config.apiKeyOfuscada}` },
+              body: fileMeta.blob
+            });
+            if (resp.ok) {
+              const blob = await resp.blob();
+              const url = URL.createObjectURL(blob);
+              const iframe = document.createElement('iframe');
+              iframe.src = url;
+              iframe.style.width = '100%';
+              iframe.style.height = '80vh';
+              container.appendChild(iframe);
+              return container;
+            }
+          } catch (err) { console.warn(err); }
+        }
+        await PluginLoader.instance.load('mammoth');
+        try {
+          const arrayBuffer = await fileMeta.blob.arrayBuffer();
+          const result = await window.mammoth.convertToHtml({ arrayBuffer });
+          container.innerHTML = `<div style="color: var(--text-dim); margin-bottom:6px;">Modo de baja fidelidad (sin conexión). Configure API Key en ajustes.</div>${result.value}`;
+        } catch (err) {
+          container.innerHTML = `<div style="color: var(--error);">Documento corrupto o no soportado: ${err}</div>`;
+        }
+        return container;
+      }
+
+      static async createImageView(fileMeta) {
+        const container = document.createElement('div');
+        container.style.display = 'flex';
+        container.style.justifyContent = 'center';
+        container.style.alignItems = 'center';
+        container.style.height = '100%';
+        container.style.position = 'relative';
+        const img = document.createElement('img');
+        img.src = URL.createObjectURL(fileMeta.blob);
+        img.style.maxWidth = '100%';
+        img.style.maxHeight = '100%';
+        img.style.objectFit = 'contain';
+        img.onload = () => UIManager.updateStatusDetail(`${img.naturalWidth}x${img.naturalHeight}px`);
+        let scale = 1;
+        let translate = { x: 0, y: 0 };
+        const applyTransform = () => {
+          img.style.transform = `translate(${translate.x}px, ${translate.y}px) scale(${scale})`;
+          img.style.cursor = scale > 1 ? (isPanning ? 'grabbing' : 'grab') : 'default';
+        };
+        let isPanning = false;
+        let start = { x: 0, y: 0 };
+        img.addEventListener('mousedown', (e) => {
+          if (scale <= 1) return;
+          isPanning = true;
+          start = { x: e.clientX - translate.x, y: e.clientY - translate.y };
+          img.style.cursor = 'grabbing';
+        });
+        window.addEventListener('mouseup', () => { if (isPanning) { isPanning = false; img.style.cursor = scale > 1 ? 'grab' : 'default'; } });
+        window.addEventListener('mousemove', (e) => {
+          if (!isPanning) return;
+          translate = { x: e.clientX - start.x, y: e.clientY - start.y };
+          applyTransform();
+        });
+        const toolbar = document.createElement('div');
+        toolbar.className = 'image-toolbar';
+        ['Rotar Izq', 'Rotar Der', 'Recortar'].forEach(label => {
+          const btn = document.createElement('button');
+          btn.textContent = label;
+          btn.onclick = async () => {
+            const buffer = await fileMeta.blob.arrayBuffer();
+            const bitmap = await createImageBitmap(new Blob([buffer], { type: fileMeta.type }));
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            if (label.includes('Rotar')) {
+              const angle = label === 'Rotar Izq' ? -90 : 90;
+              const rad = angle * Math.PI / 180;
+              canvas.width = Math.abs(Math.cos(rad)) * bitmap.width + Math.abs(Math.sin(rad)) * bitmap.height;
+              canvas.height = Math.abs(Math.sin(rad)) * bitmap.width + Math.abs(Math.cos(rad)) * bitmap.height;
+              ctx.translate(canvas.width / 2, canvas.height / 2);
+              ctx.rotate(rad);
+              ctx.drawImage(bitmap, -bitmap.width / 2, -bitmap.height / 2);
+            } else {
+              const cropSize = Math.min(bitmap.width, bitmap.height) * 0.8;
+              canvas.width = cropSize;
+              canvas.height = cropSize;
+              const sx = (bitmap.width - cropSize) / 2;
+              const sy = (bitmap.height - cropSize) / 2;
+              ctx.drawImage(bitmap, sx, sy, cropSize, cropSize, 0, 0, cropSize, cropSize);
+            }
+            canvas.toBlob(async (blob) => {
+              if (!blob) return;
+              if (img.src.startsWith('blob:')) URL.revokeObjectURL(img.src);
+              img.src = URL.createObjectURL(blob);
+              scale = 1; translate = { x: 0, y: 0 }; applyTransform();
+              fileMeta.blob = blob;
+              await App.instance.fs.putFile(fileMeta);
+              App.instance.persistSession();
+            }, fileMeta.type || 'image/png');
+          };
+          toolbar.appendChild(btn);
+        });
+        container.append(toolbar, img);
+        container.addEventListener('wheel', (e) => {
+          if (!e.ctrlKey) return;
+          e.preventDefault();
+          scale = Math.max(0.1, scale + (e.deltaY < 0 ? 0.1 : -0.1));
+          if (scale <= 1) { translate = { x: 0, y: 0 }; }
+          applyTransform();
+          UIManager.setZoom(Math.round(scale * 100));
+        });
+        applyTransform();
+        return container;
+      }
+
+      static async createHexView(fileMeta) {
+        const buffer = new Uint8Array(await fileMeta.blob.arrayBuffer());
+        const container = document.createElement('div');
+        container.style.fontFamily = 'JetBrains Mono, monospace';
+        container.style.whiteSpace = 'pre';
+        const chunkSize = 16;
+        let output = '';
+        for (let i = 0; i < buffer.length; i += chunkSize) {
+          const slice = buffer.slice(i, i + chunkSize);
+          const hex = Array.from(slice).map(b => b.toString(16).padStart(2, '0')).join(' ');
+          const ascii = Array.from(slice).map(b => (b > 31 && b < 127) ? String.fromCharCode(b) : '.').join('');
+          output += `${i.toString(16).padStart(8, '0')}  ${hex.padEnd(48, ' ')}  ${ascii}\n`;
+        }
+        container.textContent = output;
+        return container;
+      }
+    }
+
+    class App {
+      constructor() {
+        this.fs = new FileSystem();
+        this.openTabs = [];
+        this.activeTabId = null;
+        this.config = this.loadConfig();
+      }
+
+      formatSize(bytes = 0) {
+        if (!bytes) return '0 B';
+        const units = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+        const val = bytes / Math.pow(1024, i);
+        return `${val.toFixed(val >= 10 ? 0 : 1)} ${units[i]}`;
+      }
+
+      describeFile(file) {
+        if (!file?.blob) return '';
+        const type = file.blob.type || file.type || 'desconocido';
+        return `${type} · ${this.formatSize(file.blob.size)}`;
+      }
+
+      static get instance() {
+        if (!window.__app) window.__app = new App();
+        return window.__app;
+      }
+
+      loadConfig() {
+        const saved = localStorage.getItem(CONFIG_KEY);
+        return saved ? JSON.parse(saved) : { theme: 'dark', zoomLevel: 1, apiKeyOfuscada: '' };
+      }
+
+      saveConfig(cfg) {
+        this.config = { ...this.config, ...cfg };
+        localStorage.setItem(CONFIG_KEY, JSON.stringify(this.config));
+      }
+
+      getConfig() { return this.config; }
+
+      applyTheme(theme = 'dark') {
+        const root = document.documentElement;
+        const themes = {
+          dark: {
+            '--bg-app': '#1e1e1e',
+            '--bg-panel': '#252526',
+            '--bg-active': '#1e1e1e',
+            '--text-primary': '#d4d4d4',
+            '--text-dim': '#858585',
+            '--accent': '#007acc',
+            '--border': '#3e3e42',
+            '--error': '#f48771'
+          },
+          light: {
+            '--bg-app': '#f5f5f5',
+            '--bg-panel': '#ffffff',
+            '--bg-active': '#fdfdfd',
+            '--text-primary': '#1e1e1e',
+            '--text-dim': '#4a4a4a',
+            '--accent': '#007acc',
+            '--border': '#d0d0d0',
+            '--error': '#c02f1d'
+          }
+        };
+        const palette = themes[theme] || themes.dark;
+        Object.entries(palette).forEach(([k, v]) => root.style.setProperty(k, v));
+        UIManager.updateStatusDetail(UIManager.statusDetail?.textContent || '');
+      }
+
+      async init() {
+        UIManager.setup();
+        await this.fs.init();
+        this.applyTheme(this.config.theme);
+        this.restoreSession();
+        this.bindGlobalEvents();
+      }
+
+      bindGlobalEvents() {
+        document.getElementById('open-file').onclick = () => document.getElementById('file-input').click();
+        document.getElementById('file-input').onchange = (e) => this.handleFileInput(e.target.files);
+        document.getElementById('global-search').onclick = () => this.globalSearch();
+        document.getElementById('compare-files').onclick = () => this.compareFiles();
+        document.getElementById('export-btn').onclick = () => this.exportFile();
+        document.getElementById('settings-btn').onclick = () => this.openSettings();
+        document.getElementById('help-btn').onclick = () => this.showCheatsheet();
+        document.getElementById('panic-btn').onclick = () => this.panicMode();
+        window.onblur = () => this.autosave();
+        window.addEventListener('keydown', (e) => this.handleShortcuts(e));
+        const shell = document.getElementById('app-shell');
+        const onDrag = (e) => { e.preventDefault(); e.stopPropagation(); document.body.classList.add('dragging'); };
+        ['dragenter', 'dragover'].forEach(ev => shell.addEventListener(ev, onDrag));
+        shell.addEventListener('dragleave', (e) => { e.preventDefault(); e.stopPropagation(); document.body.classList.remove('dragging'); });
+        shell.addEventListener('drop', (e) => {
+          e.preventDefault(); e.stopPropagation();
+          document.body.classList.remove('dragging');
+          const files = e.dataTransfer?.files;
+          if (files?.length) this.handleFileInput(files);
+        });
+      }
+
+      handleShortcuts(e) {
+        if (e.ctrlKey && e.key.toLowerCase() === 'f') {
+          e.preventDefault();
+          this.globalSearch();
+        }
+        if (e.ctrlKey && e.key.toLowerCase() === 'p') {
+          e.preventDefault();
+          this.printActive();
+        }
+      }
+
+      async handleFileInput(fileList) {
+        const files = Array.from(fileList);
+        for (const file of files) {
+          if (file.size > 10 * 1024 * 1024) {
+            const proceed = await UIManager.showConfirm('Modo Valiente', `${file.name} supera 10MB. ¿Activar de todos modos?`);
+            if (!proceed) continue;
+          }
+          const id = crypto.randomUUID();
+          const meta = { id, name: file.name, type: file.type, blob: file, lastModified: file.lastModified, isDirty: false };
+          await this.fs.putFile(meta);
+          this.openTabs.push(meta);
+          this.activateTab(id);
+        }
+        this.persistSession();
+        UIManager.updateSidebar(await this.fs.listFiles(), this.openTabs);
+      }
+
+      async openFromDB(id) {
+        const file = await this.fs.getFile(id);
+        if (!file) return;
+        if (!this.openTabs.find(f => f.id === id)) this.openTabs.push(file);
+        this.activateTab(id);
+        this.persistSession();
+        UIManager.updateSidebar(await this.fs.listFiles(), this.openTabs);
+      }
+
+      async activateTab(id) {
+        this.activeTabId = id;
+        UIManager.renderTabs(this.openTabs);
+        const file = this.openTabs.find(f => f.id === id);
+        if (!file) return;
+        UIManager.updateStatusDetail('');
+        UIManager.setZoom(100);
+        UIManager.updateStatusMeta(this.describeFile(file));
+        const viewer = await EditorFactory.createViewer(file);
+        UIManager.setContent(viewer);
+      }
+
+      markDirty(id, state) {
+        const file = this.openTabs.find(f => f.id === id);
+        if (file) file.isDirty = state;
+        UIManager.renderTabs(this.openTabs);
+        this.persistSession();
+      }
+
+      async saveContent(id, text) {
+        const file = this.openTabs.find(f => f.id === id);
+        if (!file) return;
+        file.blob = new Blob([text], { type: file.type || 'text/plain' });
+        file.isDirty = false;
+        await this.fs.putFile(file);
+        UIManager.renderTabs(this.openTabs);
+        this.persistSession();
+      }
+
+      closeTab(id) {
+        const idx = this.openTabs.findIndex(f => f.id === id);
+        if (idx === -1) return;
+        const file = this.openTabs[idx];
+        if (file.objectUrl) URL.revokeObjectURL(file.objectUrl);
+        this.openTabs.splice(idx, 1);
+        if (this.activeTabId === id) this.activeTabId = this.openTabs[0]?.id || null;
+        UIManager.renderTabs(this.openTabs);
+        if (this.activeTabId) this.activateTab(this.activeTabId); else { UIManager.setContent(document.createElement('div')); UIManager.updateStatusMeta(''); UIManager.updateStatusDetail(''); }
+        this.persistSession();
+      }
+
+      closeOthers(id) {
+        const keep = this.openTabs.find(f => f.id === id);
+        if (!keep) return;
+        this.openTabs.forEach(f => { if (f.isDirty && f.blob?.text) f.blob.text().then(text => this.saveContent(f.id, text)); });
+        this.openTabs = [keep];
+        this.activeTabId = id;
+        this.fs.putFile(keep);
+        UIManager.renderTabs(this.openTabs);
+        this.activateTab(id);
+        this.persistSession();
+      }
+
+      duplicateTab(id) {
+        const file = this.openTabs.find(f => f.id === id);
+        if (!file) return;
+        const newId = crypto.randomUUID();
+        const copy = { ...file, id: newId, name: file.name + ' (copia)', isDirty: true };
+        this.openTabs.push(copy);
+        this.fs.putFile(copy);
+        this.activateTab(newId);
+        this.persistSession();
+      }
+
+      async renameTab(id) {
+        const file = this.openTabs.find(f => f.id === id);
+        if (!file) return;
+        const name = await UIManager.showInput('Renombrar pestaña', 'Nuevo nombre', file.name);
+        if (!name) return;
+        file.name = name;
+        this.fs.putFile(file);
+        UIManager.renderTabs(this.openTabs);
+        UIManager.updateSidebar([], this.openTabs);
+        this.persistSession();
+      }
+
+      showProps(id) {
+        const file = this.openTabs.find(f => f.id === id);
+        if (!file) return;
+        const body = document.createElement('div');
+        body.innerHTML = `<p><strong>Nombre:</strong> ${file.name}</p><p><strong>Tamaño:</strong> ${(file.blob?.size || 0)} bytes</p><p><strong>Última modificación:</strong> ${new Date(file.lastModified || Date.now()).toLocaleString()}</p>`;
+        UIManager.showModal('Propiedades', body, [{ text: 'Cerrar', onClick: () => UIManager.hideModal() }]);
+      }
+
+      async exportFile(id = this.activeTabId) {
+        const targetId = id || this.activeTabId;
+        if (!targetId) return UIManager.showToast('No hay pestaña activa para exportar.', 'error');
+        let file = this.openTabs.find(f => f.id === targetId);
+        if (!file) file = await this.fs.getFile(targetId);
+        if (!file || !file.blob) return UIManager.showToast('Archivo no disponible.', 'error');
+        const url = URL.createObjectURL(file.blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = file.name || 'archivo';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 500);
+        UIManager.showToast('Descarga iniciada.', 'success');
+      }
+
+      async globalSearch() {
+        const term = await UIManager.showInput('Buscar en pestañas', 'Texto a buscar');
+        if (!term) return;
+        const results = [];
+        for (const tab of this.openTabs) {
+          if (!tab.blob || !tab.blob.type.startsWith('text')) continue;
+          const content = await tab.blob.text();
+          const lines = content.split(/\n/);
+          const matches = [];
+          lines.forEach((line, idx) => {
+            if (line.toLowerCase().includes(term.toLowerCase())) {
+              matches.push({ line: idx + 1, preview: line.trim().slice(0, 180) });
+            }
+          });
+          if (matches.length) results.push({ tab, matches });
+        }
+        const body = document.createElement('div');
+        if (!results.length) body.textContent = 'Sin coincidencias o archivos no textuales.';
+        results.forEach(r => {
+          const section = document.createElement('div');
+          section.innerHTML = `<strong>${r.tab.name}</strong>`;
+          r.matches.forEach(m => {
+            const btn = document.createElement('button');
+            btn.textContent = `Línea ${m.line}: ${m.preview}`;
+            btn.style.margin = '4px 0';
+            btn.onclick = () => { UIManager.hideModal(); this.activateTab(r.tab.id); };
+            section.appendChild(btn);
+          });
+          body.appendChild(section);
+        });
+        UIManager.showModal('Buscar en pestañas', body, [{ text: 'Cerrar', onClick: () => UIManager.hideModal() }]);
+      }
+
+      async compareFiles() {
+        if (this.openTabs.length < 2) return UIManager.showToast('Abre al menos dos archivos.', 'info');
+        await PluginLoader.instance.load('jsdiff');
+        const body = document.createElement('div');
+        const selects = this.openTabs.map(tab => {
+          const label = document.createElement('label');
+          const cb = document.createElement('input');
+          cb.type = 'checkbox';
+          cb.value = tab.id;
+          label.append(cb, ' ', tab.name);
+          body.appendChild(label);
+          body.appendChild(document.createElement('br'));
+          return cb;
+        });
+        const run = async () => {
+          const chosen = selects.filter(cb => cb.checked).map(cb => cb.value);
+          if (chosen.length !== 2) return UIManager.showToast('Selecciona dos archivos.', 'info');
+          const [a, b] = await Promise.all(chosen.map(id => this.fs.getFile(id)));
+          const [aText, bText] = await Promise.all([a.blob.text(), b.blob.text()]);
+          const diff = Diff.diffLines(aText, bText);
+          const wrapper = document.createElement('div');
+          wrapper.className = 'visual-diff';
+          const left = document.createElement('div');
+          left.className = 'diff-pane';
+          const right = document.createElement('div');
+          right.className = 'diff-pane';
+          diff.forEach(part => {
+            const line = document.createElement('div');
+            line.className = 'diff-line ' + (part.added ? 'added' : part.removed ? 'removed' : 'neutral');
+            line.textContent = part.value;
+            if (part.added) right.appendChild(line);
+            else if (part.removed) left.appendChild(line);
+            else { left.appendChild(line.cloneNode(true)); right.appendChild(line); }
+          });
+          wrapper.append(left, right);
+          UIManager.setContent(wrapper);
+          UIManager.hideModal();
+        };
+        UIManager.showModal('Selecciona dos pestañas', body, [
+          { text: 'Cancelar', onClick: () => UIManager.hideModal() },
+          { text: 'Comparar', onClick: run }
+        ]);
+      }
+
+      openSettings() {
+        const body = document.createElement('div');
+        const apiInput = document.createElement('input');
+        apiInput.placeholder = 'API Key (opcional)';
+        apiInput.value = this.config.apiKeyOfuscada || '';
+        apiInput.style.width = '100%';
+        apiInput.style.marginBottom = '10px';
+        const themeLabel = document.createElement('label');
+        themeLabel.textContent = 'Tema';
+        themeLabel.style.display = 'block';
+        themeLabel.style.margin = '6px 0 4px';
+        const themeSelect = document.createElement('select');
+        ['dark', 'light'].forEach(opt => {
+          const option = document.createElement('option');
+          option.value = opt;
+          option.textContent = opt === 'dark' ? 'Oscuro' : 'Claro';
+          if (this.config.theme === opt) option.selected = true;
+          themeSelect.appendChild(option);
+        });
+        themeSelect.style.width = '100%';
+        themeSelect.style.padding = '6px';
+        themeSelect.style.marginBottom = '12px';
+        body.append(apiInput, themeLabel, themeSelect);
+        UIManager.showModal('Ajustes', body, [
+          { text: 'Guardar', onClick: () => { this.saveConfig({ apiKeyOfuscada: apiInput.value, theme: themeSelect.value }); this.applyTheme(themeSelect.value); UIManager.hideModal(); } },
+          { text: 'Cerrar', onClick: () => UIManager.hideModal() }
+        ]);
+      }
+
+      showCheatsheet() {
+        const body = document.createElement('div');
+        const table = document.createElement('table');
+        table.style.width = '100%';
+        table.style.borderCollapse = 'collapse';
+        const rows = [
+          ['Ctrl + S', 'Guardar'],
+          ['Ctrl + F', 'Buscar Global'],
+          ['Ctrl + P', 'Imprimir'],
+          ['Ctrl + Scroll', 'Zoom Editor/Imagen'],
+          ['Arrastrar', 'Abrir archivo']
+        ];
+        rows.forEach(([shortcut, desc]) => {
+          const tr = document.createElement('tr');
+          const td1 = document.createElement('td');
+          const td2 = document.createElement('td');
+          td1.textContent = shortcut;
+          td2.textContent = desc;
+          td1.style.padding = td2.style.padding = '6px';
+          td1.style.color = 'var(--accent)';
+          td2.style.color = 'var(--text-primary)';
+          tr.append(td1, td2);
+          table.appendChild(tr);
+        });
+        body.appendChild(table);
+        UIManager.showModal('Atajos disponibles', body, [{ text: 'Cerrar', onClick: () => UIManager.hideModal() }]);
+      }
+
+      panicMode() {
+        const body = document.createElement('div');
+        body.innerHTML = '<p>Esto borrará todos los datos locales.</p>'; 
+        let counter = 5;
+        const confirmBtn = document.createElement('button');
+        confirmBtn.textContent = `Confirmar (${counter})`;
+        confirmBtn.disabled = true;
+        const timer = setInterval(() => {
+          counter -= 1;
+          confirmBtn.textContent = `Confirmar (${counter})`;
+          if (counter <= 0) { confirmBtn.disabled = false; clearInterval(timer); }
+        }, 1000);
+        confirmBtn.onclick = () => { indexedDB.deleteDatabase(this.fs.dbName); localStorage.clear(); location.reload(); };
+        UIManager.showModal('Factory Reset', body, [
+          { text: 'Cancelar', onClick: () => { clearInterval(timer); UIManager.hideModal(); } },
+          { text: 'Confirmar', variant: 'danger', onClick: confirmBtn.onclick }
+        ]);
+      }
+
+      autosave() {
+        this.openTabs.forEach(tab => { if (tab.isDirty && tab.blob?.text) tab.blob.text().then(text => this.saveContent(tab.id, text)); });
+      }
+
+      async restoreSession() {
+        const ids = JSON.parse(localStorage.getItem(SESSION_KEY) || '[]');
+        const files = await this.fs.listFiles();
+        ids.forEach(id => {
+          const file = files.find(f => f.id === id);
+          if (file) this.openTabs.push(file);
+        });
+        UIManager.updateSidebar(files, this.openTabs);
+        UIManager.renderTabs(this.openTabs);
+        if (this.openTabs.length) this.activateTab(this.openTabs[0].id); else UIManager.updateStatusMeta('');
+      }
+
+      persistSession() {
+        localStorage.setItem(SESSION_KEY, JSON.stringify(this.openTabs.map(f => f.id)));
+      }
+
+      printActive() {
+        const content = document.getElementById('content-scroll').cloneNode(true);
+        const frame = document.createElement('iframe');
+        frame.style.position = 'fixed';
+        frame.style.right = '0';
+        frame.style.bottom = '0';
+        frame.style.width = '0';
+        frame.style.height = '0';
+        document.body.appendChild(frame);
+        const doc = frame.contentDocument;
+        doc.open();
+        doc.write('<!DOCTYPE html><html><head><style>body{font-family:Inter,sans-serif;color:#000;background:#fff;padding:20px;} pre{white-space:pre-wrap;}</style></head><body></body></html>');
+        doc.body.appendChild(content);
+        doc.close();
+        frame.contentWindow.focus();
+        frame.contentWindow.print();
+        setTimeout(() => frame.remove(), 200);
+      }
+    }
+
+    window.onload = () => App.instance.init();
+  </script>
+</body>
+</html>
