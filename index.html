@@ -1477,18 +1477,6 @@
         left.appendChild(editorHost);
         container.append(left, resizer, right, toggle);
 
-        const monacoEditor = monaco.editor.create(editorHost, {
-          value: fileMeta.blob ? await fileMeta.blob.text() : '{}',
-          language: 'json',
-          theme: App.instance.config.theme === 'dark' ? 'vs-dark' : 'vs',
-          automaticLayout: true,
-          minimap: { enabled: false },
-          fontFamily: 'JetBrains Mono, Consolas, monospace',
-          fontSize: 14,
-          mouseWheelZoom: true
-        });
-        EditorFactory.editors.add(monacoEditor);
-
         let dragging = false;
         resizer.addEventListener('mousedown', () => dragging = true);
         window.addEventListener('mouseup', () => dragging = false);
@@ -1499,111 +1487,132 @@
           right.style.flex = 1 - pct;
         });
 
-        const assign = (obj, path, val) => {
-          if (!path.length) return val;
-          const [p, ...rest] = path;
-          const clone = Array.isArray(obj) ? [...obj] : { ...obj };
-          const key = Array.isArray(obj) ? Number(p) : p;
-          clone[key] = assign(clone[key], rest, val);
-          return clone;
-        };
+        let monacoEditor;
+        require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.52.0/min/vs' } });
+        await new Promise((resolve) => {
+          require(['vs/editor/editor.main'], () => {
+            (async () => {
+              monacoEditor = monaco.editor.create(editorHost, {
+                value: fileMeta.blob ? await fileMeta.blob.text() : '{}',
+                language: 'json',
+                theme: App.instance.config.theme === 'dark' ? 'vs-dark' : 'vs',
+                automaticLayout: true,
+                minimap: { enabled: false },
+                fontFamily: 'JetBrains Mono, Consolas, monospace',
+                fontSize: 14,
+                mouseWheelZoom: true
+              });
+              EditorFactory.editors.add(monacoEditor);
 
-        const renderNode = (key, value, path = []) => {
-          const node = document.createElement('li');
-          node.className = 'json-node';
-          node.dataset.path = path.join('.');
-          const toggleEl = document.createElement('span');
-          toggleEl.className = 'toggle';
-          const keySpan = document.createElement('span');
-          keySpan.className = 'key';
-          keySpan.textContent = key !== null ? `${key}: ` : '';
-          const valueSpan = document.createElement('span');
-          valueSpan.className = 'value';
-          const typeSpan = document.createElement('span');
-          typeSpan.className = 'type';
+              const assign = (obj, path, val) => {
+                if (!path.length) return val;
+                const [p, ...rest] = path;
+                const clone = Array.isArray(obj) ? [...obj] : { ...obj };
+                const key = Array.isArray(obj) ? Number(p) : p;
+                clone[key] = assign(clone[key], rest, val);
+                return clone;
+              };
 
-          const wrapper = document.createElement('div');
-          wrapper.append(toggleEl, keySpan);
+              const renderNode = (key, value, path = []) => {
+                const node = document.createElement('li');
+                node.className = 'json-node';
+                node.dataset.path = path.join('.');
+                const toggleEl = document.createElement('span');
+                toggleEl.className = 'toggle';
+                const keySpan = document.createElement('span');
+                keySpan.className = 'key';
+                keySpan.textContent = key !== null ? `${key}: ` : '';
+                const valueSpan = document.createElement('span');
+                valueSpan.className = 'value';
+                const typeSpan = document.createElement('span');
+                typeSpan.className = 'type';
 
-          if (typeof value === 'object' && value !== null) {
-            toggleEl.textContent = '▾';
-            const childList = document.createElement('ul');
-            const isArray = Array.isArray(value);
-            typeSpan.textContent = isArray ? '[ ]' : '{ }';
-            wrapper.append(typeSpan);
-            Object.entries(value).forEach(([k, v]) => childList.appendChild(renderNode(k, v, [...path, k])));
-            node.append(wrapper, childList);
-            toggleEl.onclick = () => {
-              node.classList.toggle('collapsed');
-              toggleEl.textContent = node.classList.contains('collapsed') ? '▸' : '▾';
-            };
-          } else {
-            toggleEl.textContent = '';
-            valueSpan.textContent = value;
-            valueSpan.contentEditable = true;
-            valueSpan.classList.add('editable');
-            valueSpan.ondblclick = () => document.execCommand('selectAll', false, null);
-            valueSpan.onblur = () => {
-              const newVal = valueSpan.textContent;
-              const parsed = isNaN(Number(newVal)) ? newVal : Number(newVal);
-              const currentData = parseEditorValue();
-              if (!currentData) return;
-              const updated = assign(currentData, path, parsed);
-              const jsonText = JSON.stringify(updated, null, 2);
-              monacoEditor.setValue(jsonText);
-              fileMeta.blob = new Blob([jsonText], { type: 'application/json' });
-              App.instance.markDirty(fileMeta.id, true);
-              buildTree(updated);
-            };
-            wrapper.append(valueSpan);
-            node.append(wrapper);
-          }
-          return node;
-        };
+                const wrapper = document.createElement('div');
+                wrapper.append(toggleEl, keySpan);
 
-        const parseEditorValue = () => {
-          const value = monacoEditor.getValue();
-          try {
-            return JSON.parse(value);
-          } catch (err) {
-            treeContainer.innerHTML = `<div style="color: var(--error); padding: 8px;">JSON inválido: ${err.message}</div>`;
-            return null;
-          }
-        };
+                if (typeof value === 'object' && value !== null) {
+                  toggleEl.textContent = '▾';
+                  const childList = document.createElement('ul');
+                  const isArray = Array.isArray(value);
+                  typeSpan.textContent = isArray ? '[ ]' : '{ }';
+                  wrapper.append(typeSpan);
+                  Object.entries(value).forEach(([k, v]) => childList.appendChild(renderNode(k, v, [...path, k])));
+                  node.append(wrapper, childList);
+                  toggleEl.onclick = () => {
+                    node.classList.toggle('collapsed');
+                    toggleEl.textContent = node.classList.contains('collapsed') ? '▸' : '▾';
+                  };
+                } else {
+                  toggleEl.textContent = '';
+                  valueSpan.textContent = value;
+                  valueSpan.contentEditable = true;
+                  valueSpan.classList.add('editable');
+                  valueSpan.ondblclick = () => document.execCommand('selectAll', false, null);
+                  valueSpan.onblur = () => {
+                    const newVal = valueSpan.textContent;
+                    const parsed = isNaN(Number(newVal)) ? newVal : Number(newVal);
+                    const currentData = parseEditorValue();
+                    if (!currentData) return;
+                    const updated = assign(currentData, path, parsed);
+                    const jsonText = JSON.stringify(updated, null, 2);
+                    monacoEditor.setValue(jsonText);
+                    fileMeta.blob = new Blob([jsonText], { type: 'application/json' });
+                    App.instance.markDirty(fileMeta.id, true);
+                    buildTree(updated);
+                  };
+                  wrapper.append(valueSpan);
+                  node.append(wrapper);
+                }
+                return node;
+              };
 
-        const buildTree = (obj) => {
-          treeContainer.innerHTML = '';
-          if (!obj) return;
-          const root = document.createElement('ul');
-          Object.entries(obj).forEach(([k, v]) => {
-            const li = renderNode(k, v, [k]);
-            root.appendChild(li);
+              const parseEditorValue = () => {
+                const value = monacoEditor.getValue();
+                try {
+                  return JSON.parse(value);
+                } catch (err) {
+                  treeContainer.innerHTML = `<div style="color: var(--error); padding: 8px;">JSON inválido: ${err.message}</div>`;
+                  return null;
+                }
+              };
+
+              const buildTree = (obj) => {
+                treeContainer.innerHTML = '';
+                if (!obj) return;
+                const root = document.createElement('ul');
+                Object.entries(obj).forEach(([k, v]) => {
+                  const li = renderNode(k, v, [k]);
+                  root.appendChild(li);
+                });
+                treeContainer.appendChild(root);
+              };
+
+              const syncBlob = () => {
+                const value = monacoEditor.getValue();
+                fileMeta.blob = new Blob([value], { type: 'application/json' });
+                App.instance.markDirty(fileMeta.id, true);
+              };
+
+              const updateTreeFromEditor = () => {
+                const parsed = parseEditorValue();
+                if (parsed) {
+                  buildTree(parsed);
+                  syncBlob();
+                }
+              };
+
+              let debounceTimer = null;
+              monacoEditor.onDidChangeModelContent(() => {
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(updateTreeFromEditor, 250);
+              });
+              monacoEditor.onDidBlurEditorText(updateTreeFromEditor);
+
+              updateTreeFromEditor();
+              resolve();
+            })();
           });
-          treeContainer.appendChild(root);
-        };
-
-        const syncBlob = () => {
-          const value = monacoEditor.getValue();
-          fileMeta.blob = new Blob([value], { type: 'application/json' });
-          App.instance.markDirty(fileMeta.id, true);
-        };
-
-        const updateTreeFromEditor = () => {
-          const parsed = parseEditorValue();
-          if (parsed) {
-            buildTree(parsed);
-            syncBlob();
-          }
-        };
-
-        let debounceTimer = null;
-        monacoEditor.onDidChangeModelContent(() => {
-          clearTimeout(debounceTimer);
-          debounceTimer = setTimeout(updateTreeFromEditor, 250);
         });
-        monacoEditor.onDidBlurEditorText(updateTreeFromEditor);
-
-        updateTreeFromEditor();
         return container;
       }
 
