@@ -4,6 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Universal DocViewer</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"
+    integrity="sha512-ADblDQH3mnhTO5JBEHl5x5HbEJ6xfN5lci1Gw7Mntshs/DVCumI/Gv/ixCs6Vrb/taPWx5wzQdnDLGJ9mOPuUQ=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
     integrity="sha512-SzlrxWUlpfuzQ+pcUCosxcglQRNAq/DZjVsC0lE0x1J9a9pcP5Vo0New+0PwQvlaXaVUearIOBhiXZ5V3ynxwA==" crossorigin="anonymous"
     referrerpolicy="no-referrer" />
@@ -173,19 +176,76 @@
     .collapsed > ul { display: none; }
 
     .pdf-toolbar {
-      display: flex;
-      gap: 8px;
-      padding: 8px;
       position: sticky;
-      top: 0;
-      background: linear-gradient(180deg, rgba(30,30,30,0.98), rgba(30,30,30,0.85));
-      z-index: 5;
-      border-bottom: 1px solid var(--border);
+      top: 10px;
+      margin: 0 auto 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      max-width: 960px;
+      background: radial-gradient(circle at 20% 20%, rgba(124, 93, 250, 0.15), rgba(124, 93, 250, 0))
+        , rgba(19, 21, 29, 0.78);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(14px) saturate(140%);
+      z-index: 8;
+    }
+
+    .pdf-toolbar .toolbar-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 8px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+
+    .pdf-toolbar button {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      color: var(--text-primary);
+      padding: 8px 10px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .pdf-toolbar button:hover {
+      background: rgba(124, 93, 250, 0.16);
+      border-color: rgba(124, 93, 250, 0.5);
+      transform: translateY(-1px);
     }
 
     .pdf-toolbar button.active {
-      background: rgba(124, 93, 250, 0.18);
-      border-color: rgba(124, 93, 250, 0.5);
+      background: linear-gradient(135deg, rgba(124, 93, 250, 0.28), rgba(255, 255, 255, 0.08));
+      border-color: rgba(124, 93, 250, 0.7);
+      box-shadow: 0 10px 30px rgba(124, 93, 250, 0.4);
+    }
+
+    .pdf-toolbar .context-controls input,
+    .pdf-toolbar .context-controls select {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--text-primary);
+      border-radius: 8px;
+      padding: 6px 8px;
+      min-width: 64px;
+    }
+
+    .pdf-toolbar .context-controls input[type='range'] {
+      accent-color: var(--accent);
+    }
+
+    .pdf-toolbar .context-controls.disabled {
+      opacity: 0.45;
+      pointer-events: none;
     }
 
     .pdf-page {
@@ -199,7 +259,8 @@
       position: absolute;
       inset: 0;
       z-index: 10;
-      cursor: crosshair;
+      cursor: default;
+      pointer-events: auto;
     }
 
     .pdf-organizer-grid {
@@ -1469,35 +1530,77 @@
         const toolbar = document.createElement('div');
         toolbar.className = 'pdf-toolbar';
         const modeGroup = document.createElement('div');
-        modeGroup.style.display = 'flex';
-        modeGroup.style.gap = '6px';
+        modeGroup.className = 'toolbar-group';
+        const styleGroup = document.createElement('div');
+        styleGroup.className = 'toolbar-group context-controls disabled';
+        const actionGroup = document.createElement('div');
+        actionGroup.className = 'toolbar-group';
+
         const modes = [
-          { key: 'navigate', label: '✋ Navegar' },
-          { key: 'draw', label: '✏️ Dibujar' },
-          { key: 'text', label: 'T Texto' }
+          { key: 'navigate', label: 'Navegar', icon: 'fa-hand' },
+          { key: 'select', label: 'Seleccionar', icon: 'fa-arrow-pointer' },
+          { key: 'draw', label: 'Dibujar', icon: 'fa-pencil' },
+          { key: 'text', label: 'Texto', icon: 'fa-font' }
         ];
-        let currentMode = 'navigate';
-        const modeButtons = modes.map(({ key, label }) => {
+        let currentMode = 'select';
+        let activeObject = null;
+        let activeCanvas = null;
+        let currentColor = '#ff5f6d';
+        let brushWidth = 3;
+        let fontSize = 22;
+        let fontFamily = 'Inter, sans-serif';
+
+        const modeButtons = modes.map(({ key, label, icon }) => {
           const btn = document.createElement('button');
-          btn.textContent = label;
+          btn.innerHTML = `<i class="fa-solid ${icon}"></i> ${label}`;
           btn.dataset.mode = key;
           btn.onclick = () => setMode(key);
           return btn;
         });
         modeButtons.forEach(btn => modeGroup.appendChild(btn));
+
         const colorInput = document.createElement('input');
         colorInput.type = 'color';
-        colorInput.value = '#ff0000';
+        colorInput.value = currentColor;
         colorInput.title = 'Color del trazo y texto';
+        const fontSizeInput = document.createElement('input');
+        fontSizeInput.type = 'range';
+        fontSizeInput.min = '10';
+        fontSizeInput.max = '72';
+        fontSizeInput.value = String(fontSize);
+        fontSizeInput.title = 'Tamaño de fuente';
+        const strokeWidthInput = document.createElement('input');
+        strokeWidthInput.type = 'range';
+        strokeWidthInput.min = '1';
+        strokeWidthInput.max = '16';
+        strokeWidthInput.value = String(brushWidth);
+        strokeWidthInput.title = 'Grosor del pincel';
+        const fontFamilySelect = document.createElement('select');
+        ['Inter, sans-serif', 'Roboto, sans-serif', 'Georgia, serif', 'Monaco, monospace'].forEach(f => {
+          const opt = document.createElement('option');
+          opt.value = f;
+          opt.textContent = f.split(',')[0];
+          fontFamilySelect.appendChild(opt);
+        });
+        fontFamilySelect.value = fontFamily;
+
         const clearBtn = document.createElement('button');
-        clearBtn.textContent = 'Limpiar página';
+        clearBtn.innerHTML = '<i class="fa-solid fa-eraser"></i> Limpiar página';
         const orgBtn = document.createElement('button');
-        orgBtn.textContent = 'Organizar páginas';
+        orgBtn.innerHTML = '<i class="fa-solid fa-table-cells"></i> Organizar páginas';
         const saveBtn = document.createElement('button');
-        saveBtn.textContent = 'Guardar PDF';
+        saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Guardar PDF';
         const info = document.createElement('span');
         info.textContent = 'Renderizando...';
-        toolbar.append(modeGroup, colorInput, clearBtn, orgBtn, saveBtn, info);
+
+        styleGroup.append(
+          createLabeledControl('Color', colorInput),
+          createLabeledControl('Fuente', fontSizeInput),
+          createLabeledControl('Pincel', strokeWidthInput),
+          createLabeledControl('Tipografía', fontFamilySelect)
+        );
+        actionGroup.append(clearBtn, orgBtn, saveBtn, info);
+        toolbar.append(modeGroup, styleGroup, actionGroup);
         const pagesWrap = document.createElement('div');
         container.append(toolbar, pagesWrap);
 
@@ -1505,26 +1608,74 @@
         const pdf = await pdfjsLib.getDocument(url).promise;
         const pageOrder = Array.from({ length: pdf.numPages }, (_, i) => i + 1);
         const pageNodes = new Map();
-        const strokes = new Map();
+        const pageCanvases = new Map();
         UIManager.updateStatusDetail(`${pdf.numPages} págs`);
 
-        const updateOverlayInteractivity = () => {
-          pageOrder.forEach(num => {
-            const node = pageNodes.get(num);
-            if (!node) return;
-            const overlay = node.querySelector('.pdf-overlay');
-            if (!overlay) return;
-            overlay.style.pointerEvents = currentMode === 'navigate' ? 'none' : 'auto';
-            overlay.style.cursor = currentMode === 'draw' ? 'crosshair' : (currentMode === 'text' ? 'text' : 'default');
-          });
+        const updateContextControls = (object) => {
+          const enabled = !!object || currentMode !== 'navigate';
+          styleGroup.classList.toggle('disabled', !enabled);
+          [colorInput, fontSizeInput, strokeWidthInput, fontFamilySelect].forEach(el => el.disabled = !enabled);
+          const color = object?.fill || object?.stroke || currentColor;
+          colorInput.value = color;
+          fontSizeInput.value = object?.fontSize || fontSize;
+          strokeWidthInput.value = object?.strokeWidth || brushWidth;
+          fontFamilySelect.value = object?.fontFamily || fontFamily;
         };
+
+        const markDirty = () => {
+          App.instance.markDirty(fileMeta.id, true);
+        };
+
+        const applyModeToCanvas = (canvasInstance) => {
+          canvasInstance.isDrawingMode = currentMode === 'draw';
+          canvasInstance.selection = currentMode === 'select' || currentMode === 'text';
+          canvasInstance.skipTargetFind = currentMode === 'draw' || currentMode === 'navigate';
+          canvasInstance.forEachObject(obj => { obj.selectable = currentMode !== 'draw' && currentMode !== 'navigate'; });
+          canvasInstance.upperCanvasEl.style.pointerEvents = currentMode === 'navigate' ? 'none' : 'auto';
+          if (canvasInstance.freeDrawingBrush) {
+            canvasInstance.freeDrawingBrush.color = currentColor;
+            canvasInstance.freeDrawingBrush.width = brushWidth;
+          }
+        };
+
+        const applyModeToCanvases = () => {
+          pageCanvases.forEach(applyModeToCanvas);
+        };
+
+        const handleSelection = (object, canvasInstance) => {
+          activeObject = object || null;
+          activeCanvas = canvasInstance || null;
+          updateContextControls(activeObject);
+        };
+
+        const applyStyleToTarget = () => {
+          currentColor = colorInput.value;
+          brushWidth = Number(strokeWidthInput.value);
+          fontSize = Number(fontSizeInput.value);
+          fontFamily = fontFamilySelect.value;
+          if (activeObject && activeCanvas) {
+            if ('fill' in activeObject) activeObject.set('fill', currentColor);
+            if ('stroke' in activeObject) activeObject.set('stroke', currentColor);
+            if ('strokeWidth' in activeObject) activeObject.set('strokeWidth', brushWidth);
+            if ('fontSize' in activeObject) activeObject.set('fontSize', fontSize);
+            if ('fontFamily' in activeObject) activeObject.set('fontFamily', fontFamily);
+            activeCanvas.requestRenderAll();
+            markDirty();
+          }
+          applyModeToCanvases();
+        };
+
+        [colorInput, fontSizeInput, strokeWidthInput, fontFamilySelect].forEach(ctrl => {
+          ctrl.addEventListener('input', applyStyleToTarget);
+        });
 
         const setMode = (mode) => {
           currentMode = mode;
           modeButtons.forEach(btn => {
             btn.classList.toggle('active', btn.dataset.mode === mode);
           });
-          updateOverlayInteractivity();
+          applyModeToCanvases();
+          updateContextControls(activeObject);
         };
 
         setMode(currentMode);
@@ -1537,6 +1688,7 @@
             const canvas = document.createElement('canvas');
             const overlay = document.createElement('canvas');
             overlay.className = 'pdf-overlay';
+            overlay.id = `pdf-overlay-${pageNumber}`;
             wrapper.append(canvas, overlay);
             wrapper.dataset.rendered = 'false';
             pageNodes.set(pageNumber, wrapper);
@@ -1553,44 +1705,40 @@
           await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
           wrapper.dataset.rendered = 'true';
 
-          // annotation drawing
-          const overlayCtx = overlay.getContext('2d');
-          let drawing = false;
-          let last = null;
-          overlay.onmousedown = (e) => {
-            if (currentMode !== 'draw') return;
-            drawing = true;
-            last = { x: e.offsetX, y: e.offsetY };
-            overlayCtx.beginPath();
-            overlayCtx.moveTo(last.x, last.y);
-          };
-          overlay.onmousemove = (e) => {
-            if (!drawing) return;
-            overlayCtx.lineWidth = 2;
-            overlayCtx.strokeStyle = colorInput.value;
-            overlayCtx.lineTo(e.offsetX, e.offsetY);
-            overlayCtx.stroke();
-            last = { x: e.offsetX, y: e.offsetY };
-          };
-          overlay.onmouseup = overlay.onmouseleave = () => {
-            if (!drawing) return;
-            drawing = false;
-            const dataUrl = overlay.toDataURL();
-            strokes.set(pageNumber, dataUrl);
-            App.instance.markDirty(fileMeta.id, true);
-          };
-          overlay.ondblclick = async (e) => {
-            if (currentMode !== 'text') return;
-            const text = await UIManager.showInput('Añadir anotación', 'Texto a colocar', '');
-            if (!text) return;
-            overlayCtx.fillStyle = colorInput.value;
-            overlayCtx.font = '16px Inter, sans-serif';
-            overlayCtx.fillText(text, e.offsetX, e.offsetY);
-            strokes.set(pageNumber, overlay.toDataURL());
-            App.instance.markDirty(fileMeta.id, true);
-          };
+          let fabricCanvas = pageCanvases.get(pageNumber);
+          if (!fabricCanvas) {
+            fabricCanvas = new fabric.Canvas(overlay, { selection: true, preserveObjectStacking: true });
+            fabricCanvas.on('selection:created', ({ selected }) => handleSelection(selected?.[0] || null, fabricCanvas));
+            fabricCanvas.on('selection:updated', ({ selected }) => handleSelection(selected?.[0] || null, fabricCanvas));
+            fabricCanvas.on('selection:cleared', () => handleSelection(null, fabricCanvas));
+            fabricCanvas.on('object:modified', markDirty);
+            fabricCanvas.on('object:added', markDirty);
+            fabricCanvas.on('path:created', markDirty);
+            fabricCanvas.on('mouse:down', (opt) => {
+              activeCanvas = fabricCanvas;
+              if (currentMode === 'text' && !opt.target) {
+                const pointer = fabricCanvas.getPointer(opt.e);
+                const itext = new fabric.IText('Doble clic para editar', {
+                  left: pointer.x,
+                  top: pointer.y,
+                  fill: currentColor,
+                  fontSize,
+                  fontFamily,
+                  editable: true,
+                });
+                fabricCanvas.add(itext);
+                fabricCanvas.setActiveObject(itext);
+                fabricCanvas.requestRenderAll();
+                handleSelection(itext, fabricCanvas);
+                markDirty();
+              }
+            });
+            pageCanvases.set(pageNumber, fabricCanvas);
+          }
 
-          updateOverlayInteractivity();
+          fabricCanvas.setWidth(viewport.width);
+          fabricCanvas.setHeight(viewport.height);
+          applyModeToCanvas(fabricCanvas);
         };
 
         const clearCurrentPage = () => {
@@ -1610,10 +1758,10 @@
           });
           if (targetPage == null) return;
           const overlay = pageNodes.get(targetPage).querySelector('.pdf-overlay');
-          if (!overlay) return;
-          const ctx = overlay.getContext('2d');
-          ctx.clearRect(0, 0, overlay.width, overlay.height);
-          strokes.delete(targetPage);
+          const fabricCanvas = pageCanvases.get(targetPage);
+          if (!overlay || !fabricCanvas) return;
+          fabricCanvas.getObjects().forEach(obj => fabricCanvas.remove(obj));
+          fabricCanvas.requestRenderAll();
           App.instance.markDirty(fileMeta.id, true);
           UIManager.showToast(`Página ${targetPage} limpia`, 'info');
         };
@@ -1627,6 +1775,7 @@
               const canvas = document.createElement('canvas');
               const overlay = document.createElement('canvas');
               overlay.className = 'pdf-overlay';
+              overlay.id = `pdf-overlay-${num}`;
               node.append(canvas, overlay);
               pageNodes.set(num, node);
               pagesWrap.appendChild(node);
@@ -1689,13 +1838,24 @@
         };
 
         saveBtn.onclick = async () => {
-          await EditorFactory.savePdfChanges(fileMeta, pageOrder, strokes);
+          await EditorFactory.savePdfChanges(fileMeta, pageOrder, pageCanvases);
         };
+
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Delete' && activeCanvas && activeObject) {
+            activeCanvas.remove(activeObject);
+            activeCanvas.requestRenderAll();
+            handleSelection(null, activeCanvas);
+            markDirty();
+          }
+        });
+
+        updateContextControls(null);
 
         return container;
       }
 
-      static async savePdfChanges(fileMeta, pageOrder, strokesMap) {
+      static async savePdfChanges(fileMeta, pageOrder, pageCanvases) {
         await PluginLoader.instance.load('pdflib');
         UIManager.setLoading(true, 'Guardando PDF...');
         try {
@@ -1707,8 +1867,9 @@
             const page = copyPages[i];
             const pageNumber = pageOrder[i];
             const addedPage = newDoc.addPage(page);
-            const strokeUrl = strokesMap.get(pageNumber);
-            if (strokeUrl) {
+            const fabricCanvas = pageCanvases.get(pageNumber);
+            if (fabricCanvas && fabricCanvas.getObjects().length) {
+              const strokeUrl = fabricCanvas.toDataURL({ format: 'png' });
               const pngBytes = await fetch(strokeUrl).then(r => r.arrayBuffer());
               const pngImage = await newDoc.embedPng(pngBytes);
               const { width, height } = addedPage.getSize();
