@@ -4,17 +4,22 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Universal DocViewer</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+    integrity="sha512-SzlrxWUlpfuzQ+pcUCosxcglQRNAq/DZjVsC0lE0x1J9a9pcP5Vo0New+0PwQvlaXaVUearIOBhiXZ5V3ynxwA==" crossorigin="anonymous"
+    referrerpolicy="no-referrer" />
   <style>
     :root {
-      --bg-app: #1e1e1e;
-      --bg-panel: #252526;
-      --bg-active: #1e1e1e;
-      --text-primary: #d4d4d4;
-      --text-dim: #858585;
-      --accent: #007acc;
-      --border: #3e3e42;
+      --bg-app: radial-gradient(circle at 20% 20%, rgba(63, 94, 251, 0.1), transparent 35%),
+        radial-gradient(circle at 80% 10%, rgba(124, 58, 237, 0.15), transparent 28%), #0f1116;
+      --bg-panel: rgba(22, 25, 32, 0.72);
+      --bg-active: rgba(13, 15, 22, 0.9);
+      --text-primary: #e9ecf2;
+      --text-dim: #9aa3b5;
+      --accent: #7c5dfa;
+      --border: rgba(255, 255, 255, 0.08);
       --error: #f48771;
-      --shadow-elevate: 0 10px 30px rgba(0, 0, 0, 0.25);
+      --shadow-elevate: 0 18px 40px rgba(0, 0, 0, 0.4);
+      --frost: blur(16px);
     }
 
     * {
@@ -30,12 +35,12 @@
       height: 100vh;
       overflow: hidden;
       -webkit-font-smoothing: antialiased;
+      background-attachment: fixed;
     }
 
     body.dragging #app-shell {
-      outline: 2px dashed var(--accent);
+      outline: 1px dashed var(--accent);
       outline-offset: -6px;
-      background: rgba(0, 122, 204, 0.06);
     }
 
     ::-webkit-scrollbar {
@@ -91,35 +96,47 @@
     }
 
     header {
-      background: var(--bg-panel);
+      background: linear-gradient(90deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0));
       border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 0 12px;
+      padding: 0 14px;
       font-size: 13px;
+      backdrop-filter: var(--frost);
     }
 
     header .brand {
-      font-weight: 700;
+      font-weight: 800;
       color: var(--accent);
-      letter-spacing: 0.4px;
+      letter-spacing: 1.4px;
+      text-transform: uppercase;
+      font-size: 13px;
     }
 
-    header button, .pill {
-      background: transparent;
-      border: 1px solid var(--border);
+    header button,
+    .pill {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid transparent;
       color: var(--text-primary);
-      padding: 5px 10px;
-      border-radius: 4px;
+      padding: 7px 12px;
+      border-radius: 10px;
       cursor: pointer;
-      transition: background 0.2s, border-color 0.2s;
+      transition: background 0.2s, border-color 0.2s, transform 0.15s;
       font-size: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      letter-spacing: 0.3px;
     }
 
-    header button:hover, .pill:hover {
-      background: rgba(255, 255, 255, 0.05);
-      border-color: var(--accent);
+    header button i { color: var(--accent); }
+
+    header button:hover,
+    .pill:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.12);
+      transform: translateY(-1px);
     }
 
     .json-tree {
@@ -235,7 +252,7 @@
     .tab-bar {
       display: flex;
       align-items: stretch;
-      background: var(--bg-panel);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0));
       border-bottom: 1px solid var(--border);
       padding-left: 8px;
       position: relative;
@@ -252,26 +269,28 @@
 
     .tab {
       position: relative;
-      padding: 8px 30px 8px 12px;
-      background: #1a1a1a;
+      padding: 10px 30px 9px 14px;
+      background: rgba(255, 255, 255, 0.03);
       color: var(--text-dim);
       border: 1px solid var(--border);
       border-bottom: none;
-      border-radius: 6px 6px 0 0;
+      border-radius: 12px 12px 0 0;
       min-width: 120px;
       max-width: 220px;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
       cursor: pointer;
-      transition: background 0.2s, color 0.2s;
+      transition: background 0.2s, color 0.2s, transform 0.15s;
+      letter-spacing: 0.2px;
     }
 
     .tab.active {
-      background: var(--bg-active);
+      background: linear-gradient(180deg, rgba(124, 93, 250, 0.15), rgba(255, 255, 255, 0.02));
       color: var(--text-primary);
       border-top: 2px solid var(--accent);
-      padding-top: 7px;
+      padding-top: 9px;
+      transform: translateY(1px);
     }
 
     .tab:hover .close {
@@ -339,55 +358,64 @@
 
     .workspace {
       display: grid;
-      grid-template-columns: 220px 1fr;
+      grid-template-columns: 240px 1fr;
       height: 100%;
       overflow: hidden;
     }
 
     .sidebar {
-      background: #1b1b1b;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0));
       border-right: 1px solid var(--border);
-      padding: 10px;
+      padding: 12px;
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 14px;
       overflow-y: auto;
+      backdrop-filter: var(--frost);
     }
 
     .sidebar section h4 {
       color: var(--text-dim);
-      margin-bottom: 6px;
-      font-size: 12px;
-      letter-spacing: 0.4px;
+      margin-bottom: 8px;
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
     }
 
     .sidebar .file-item {
-      padding: 6px 8px;
+      padding: 8px 10px;
       border: 1px solid transparent;
-      border-radius: 4px;
+      border-radius: 10px;
       cursor: pointer;
       display: flex;
       justify-content: space-between;
       align-items: center;
       font-size: 12px;
+      transition: background 0.2s, transform 0.15s, padding-left 0.15s;
+      gap: 8px;
     }
 
     .sidebar .file-item:hover {
       border-color: var(--border);
-      background: rgba(255, 255, 255, 0.03);
+      background: rgba(255, 255, 255, 0.06);
+      transform: translateX(2px);
+      padding-left: 12px;
     }
 
     .content-region {
       position: relative;
       overflow: hidden;
-      background: var(--bg-active);
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.03), rgba(0, 0, 0, 0.35));
+      backdrop-filter: var(--frost);
     }
 
     .content-scroll {
       height: 100%;
       overflow: auto;
-      padding: 12px;
+      padding: 16px 18px;
     }
+
+    .content-scroll.hidden { display: none; }
 
     .statusbar {
       background: var(--bg-panel);
@@ -469,6 +497,150 @@
       border: none;
       padding: 0;
     }
+
+    .welcome-screen {
+      position: absolute;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      color: var(--text-primary);
+      background: radial-gradient(circle at 10% 20%, rgba(124, 93, 250, 0.08), transparent 35%),
+        radial-gradient(circle at 90% 10%, rgba(0, 219, 222, 0.08), transparent 30%),
+        rgba(8, 10, 18, 0.65);
+      backdrop-filter: blur(30px);
+      animation: fadeIn 0.35s ease;
+    }
+
+    .welcome-card {
+      max-width: 900px;
+      width: 100%;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 28px;
+      box-shadow: var(--shadow-elevate);
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 24px;
+    }
+
+    .welcome-hero {
+      display: grid;
+      gap: 14px;
+    }
+
+    .welcome-logo {
+      width: 64px;
+      height: 64px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, rgba(124, 93, 250, 0.5), rgba(0, 219, 222, 0.3));
+      display: grid;
+      place-items: center;
+      font-size: 26px;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+    }
+
+    .welcome-title {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: 1.2px;
+    }
+
+    .welcome-subtitle { color: var(--text-dim); }
+
+    .quick-actions {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-top: 10px;
+    }
+
+    .action-card {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+      display: grid;
+      gap: 6px;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.2s, border-color 0.2s;
+    }
+
+    .action-card i { color: var(--accent); }
+
+    .action-card:hover {
+      transform: translateY(-3px);
+      border-color: rgba(124, 93, 250, 0.5);
+      box-shadow: 0 14px 24px rgba(0, 0, 0, 0.35);
+    }
+
+    .recents-panel {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+      display: grid;
+      gap: 8px;
+      box-shadow: var(--shadow-elevate);
+    }
+
+    .recent-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px;
+      border-radius: 12px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s, transform 0.15s;
+    }
+
+    .recent-item:hover {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: var(--border);
+      transform: translateX(3px);
+    }
+
+    .recent-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      background: rgba(124, 93, 250, 0.15);
+      color: var(--accent);
+    }
+
+    .drag-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(14px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 150;
+      color: #fff;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .drag-overlay .dropzone {
+      display: grid;
+      place-items: center;
+      gap: 12px;
+      text-align: center;
+      padding: 28px 32px;
+      border: 2px dashed rgba(255, 255, 255, 0.5);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.04);
+      box-shadow: var(--shadow-elevate);
+    }
+
+    .drag-overlay i { font-size: 42px; color: #7fe3ff; }
+
+    body.dragging .drag-overlay { display: flex; }
 
     .context-menu {
       position: fixed;
@@ -564,12 +736,12 @@
   <div id="app-shell">
     <header>
       <span class="brand">Universal DocViewer</span>
-      <button id="open-file">Abrir Archivo</button>
-      <button id="global-search">Buscar (Ctrl+F)</button>
-      <button id="compare-files">Comparar</button>
-      <button id="export-btn">Exportar</button>
-      <button id="settings-btn">Ajustes</button>
-      <button id="help-btn">?</button>
+      <button id="open-file"><i class="fa-solid fa-folder-open"></i> Abrir</button>
+      <button id="global-search"><i class="fa-solid fa-magnifying-glass"></i> Buscar</button>
+      <button id="compare-files"><i class="fa-solid fa-code-compare"></i> Comparar</button>
+      <button id="export-btn"><i class="fa-solid fa-file-export"></i> Exportar</button>
+      <button id="settings-btn"><i class="fa-solid fa-gear"></i> Ajustes</button>
+      <button id="help-btn"><i class="fa-regular fa-circle-question"></i></button>
       <span class="pill" id="session-info">Sesión lista</span>
     </header>
     <main>
@@ -594,9 +766,39 @@
           </section>
         </aside>
         <section class="content-region" id="content-region">
-          <div class="content-scroll" id="content-scroll">
-            <p style="color: var(--text-dim);">Arrastra un archivo o usa "Abrir Archivo" para comenzar.</p>
+          <div class="welcome-screen" id="welcome-screen">
+            <div class="welcome-card">
+              <div class="welcome-hero">
+                <div class="welcome-logo"><i class="fa-solid fa-clover"></i></div>
+                <div>
+                  <div class="welcome-title">Universal DocViewer</div>
+                  <div class="welcome-subtitle">Arrastra archivos aquí o selecciona una opción para comenzar.</div>
+                </div>
+                <div class="quick-actions">
+                  <div class="action-card" id="quick-open">
+                    <strong><i class="fa-solid fa-folder-open"></i> Abrir Archivo Local</strong>
+                    <small style="color: var(--text-dim);">Selecciona uno o varios archivos desde tu equipo.</small>
+                  </div>
+                  <div class="action-card" id="quick-draft">
+                    <strong><i class="fa-solid fa-pen-nib"></i> Nuevo Borrador</strong>
+                    <small style="color: var(--text-dim);">Crea una pestaña en blanco para notas rápidas.</small>
+                  </div>
+                  <div class="action-card" id="quick-settings">
+                    <strong><i class="fa-solid fa-gear"></i> Ajustes</strong>
+                    <small style="color: var(--text-dim);">Configura la app y tu API Key de conversión.</small>
+                  </div>
+                </div>
+              </div>
+              <div class="recents-panel">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                  <strong>Recientes</strong>
+                  <span style="color: var(--text-dim); font-size: 12px;">Últimos 5 documentos</span>
+                </div>
+                <div id="welcome-recents"></div>
+              </div>
+            </div>
           </div>
+          <div class="content-scroll" id="content-scroll"></div>
         </section>
       </div>
     </main>
@@ -619,6 +821,13 @@
 
   <div class="context-menu" id="context-menu"></div>
   <div id="toast-container"></div>
+  <div class="drag-overlay" id="drag-overlay">
+    <div class="dropzone">
+      <i class="fa-solid fa-cloud-arrow-down"></i>
+      <div style="font-weight:700; letter-spacing: 1px;">Suelta los archivos aquí</div>
+      <div style="color: var(--text-dim);">Soporta PDF, Markdown, DOCX, imágenes y más</div>
+    </div>
+  </div>
 
   <input type="file" id="file-input" class="hidden" multiple />
 
@@ -748,6 +957,8 @@
         this.statusMeta = document.getElementById('status-meta');
         this.statusDetail = document.getElementById('status-detail');
         this.toastContainer = document.getElementById('toast-container');
+        this.welcomeScreen = document.getElementById('welcome-screen');
+        this.welcomeRecents = document.getElementById('welcome-recents');
         this.attachListeners();
       }
 
@@ -826,29 +1037,94 @@
         this.overflowMenu.classList.toggle('hidden');
       }
 
-      static updateSidebar(files, openTabs) {
-        this.recentList.innerHTML = '';
-        files.slice(-10).forEach(f => {
-          const item = document.createElement('div');
-          item.className = 'file-item';
-          item.textContent = f.name;
-          item.onclick = () => App.instance.openFromDB(f.id);
-          this.recentList.prepend(item);
-        });
-        this.openList.innerHTML = '';
-        openTabs.forEach(f => {
-          const item = document.createElement('div');
-          item.className = 'file-item';
-          item.textContent = f.name;
-          item.onclick = () => App.instance.activateTab(f.id);
-          this.openList.appendChild(item);
-        });
-      }
+    static updateSidebar(files, openTabs) {
+      this.recentList.innerHTML = '';
+      const sorted = [...files].sort((a, b) => (b.lastModified || 0) - (a.lastModified || 0));
+      sorted.slice(0, 10).forEach(f => {
+        const item = document.createElement('div');
+        item.className = 'file-item';
+        const icon = document.createElement('i');
+        icon.className = `fa-solid ${this.iconForType(f.type)}`;
+        icon.style.color = 'var(--accent)';
+        const label = document.createElement('span');
+        label.textContent = f.name;
+        item.append(icon, label);
+        item.onclick = () => App.instance.openFromDB(f.id);
+        this.recentList.append(item);
+      });
+      this.openList.innerHTML = '';
+      openTabs.forEach(f => {
+        const item = document.createElement('div');
+        item.className = 'file-item';
+        const icon = document.createElement('i');
+        icon.className = `fa-solid ${this.iconForType(f.type)}`;
+        icon.style.color = f.isDirty ? '#e6b400' : 'var(--accent)';
+        const label = document.createElement('span');
+        label.textContent = f.name;
+        item.append(icon, label);
+        item.onclick = () => App.instance.activateTab(f.id);
+        this.openList.appendChild(item);
+      });
+      this.renderWelcomeRecents(sorted);
+      this.toggleWelcome(!openTabs.length);
+    }
 
-      static setContent(node) {
-        this.contentScroll.innerHTML = '';
-        this.contentScroll.appendChild(node);
+    static iconForType(type = '') {
+      if (type.includes('pdf')) return 'fa-file-pdf';
+      if (type.includes('word') || type.includes('doc')) return 'fa-file-word';
+      if (type.includes('sheet') || type.includes('excel') || type.includes('spreadsheet')) return 'fa-file-excel';
+      if (type.includes('image')) return 'fa-image';
+      if (type.includes('audio')) return 'fa-file-audio';
+      if (type.includes('video')) return 'fa-file-video';
+      if (type.includes('markdown') || type.includes('md')) return 'fa-file-lines';
+      return 'fa-file';
+    }
+
+    static renderWelcomeRecents(files = []) {
+      if (!this.welcomeRecents) return;
+      this.welcomeRecents.innerHTML = '';
+      const recent = files.slice(0, 5);
+      if (!recent.length) {
+        const empty = document.createElement('div');
+        empty.textContent = 'Sin historial aún. ¡Sube tu primer archivo!';
+        empty.style.color = 'var(--text-dim)';
+        this.welcomeRecents.append(empty);
+        return;
       }
+      recent.forEach(f => {
+        const item = document.createElement('div');
+        item.className = 'recent-item';
+        const icon = document.createElement('div');
+        icon.className = 'recent-icon';
+        const iconInner = document.createElement('i');
+        iconInner.className = `fa-solid ${this.iconForType(f.type)}`;
+        icon.append(iconInner);
+        const info = document.createElement('div');
+        info.style.display = 'grid';
+        info.style.gap = '2px';
+        const name = document.createElement('div');
+        name.textContent = f.name;
+        const meta = document.createElement('small');
+        meta.style.color = 'var(--text-dim)';
+        meta.textContent = App.instance.describeFile(f);
+        info.append(name, meta);
+        item.append(icon, info);
+        item.onclick = () => App.instance.openFromDB(f.id);
+        this.welcomeRecents.append(item);
+      });
+    }
+
+    static toggleWelcome(show) {
+      if (!this.welcomeScreen) return;
+      this.welcomeScreen.style.display = show ? 'flex' : 'none';
+      this.contentScroll.classList.toggle('hidden', show);
+    }
+
+    static setContent(node) {
+      this.contentScroll.innerHTML = '';
+      this.contentScroll.appendChild(node);
+      this.toggleWelcome(false);
+    }
 
       static showModal(title, bodyNode, actions = []) {
         this.modalTitle.textContent = title;
@@ -1646,6 +1922,9 @@
         document.getElementById('export-btn').onclick = () => this.exportFile();
         document.getElementById('settings-btn').onclick = () => this.openSettings();
         document.getElementById('help-btn').onclick = () => this.showCheatsheet();
+        document.getElementById('quick-open').onclick = () => document.getElementById('file-input').click();
+        document.getElementById('quick-settings').onclick = () => this.openSettings();
+        document.getElementById('quick-draft').onclick = () => this.createDraft();
         document.getElementById('panic-btn').onclick = () => this.panicMode();
         window.onblur = () => this.autosave();
         window.addEventListener('keydown', (e) => this.handleShortcuts(e));
@@ -1689,6 +1968,18 @@
         UIManager.updateSidebar(await this.fs.listFiles(), this.openTabs);
       }
 
+      async createDraft() {
+        const id = crypto.randomUUID();
+        const name = `Borrador ${this.openTabs.length + 1}.md`;
+        const blob = new Blob([''], { type: 'text/markdown' });
+        const meta = { id, name, type: 'text/markdown', blob, lastModified: Date.now(), isDirty: false };
+        await this.fs.putFile(meta);
+        this.openTabs.push(meta);
+        this.activateTab(id);
+        this.persistSession();
+        UIManager.updateSidebar(await this.fs.listFiles(), this.openTabs);
+      }
+
       async openFromDB(id) {
         const file = await this.fs.getFile(id);
         if (!file) return;
@@ -1727,7 +2018,7 @@
         this.persistSession();
       }
 
-      closeTab(id) {
+      async closeTab(id) {
         const idx = this.openTabs.findIndex(f => f.id === id);
         if (idx === -1) return;
         const file = this.openTabs[idx];
@@ -1735,8 +2026,13 @@
         this.openTabs.splice(idx, 1);
         if (this.activeTabId === id) this.activeTabId = this.openTabs[0]?.id || null;
         UIManager.renderTabs(this.openTabs);
-        if (this.activeTabId) this.activateTab(this.activeTabId); else { UIManager.setContent(document.createElement('div')); UIManager.updateStatusMeta(''); UIManager.updateStatusDetail(''); }
+        if (this.activeTabId) await this.activateTab(this.activeTabId); else {
+          UIManager.setContent(document.createElement('div'));
+          UIManager.updateStatusMeta('');
+          UIManager.updateStatusDetail('');
+        }
         this.persistSession();
+        UIManager.updateSidebar(await this.fs.listFiles(), this.openTabs);
       }
 
       closeOthers(id) {
@@ -1883,6 +2179,20 @@
         apiInput.value = this.config.apiKeyOfuscada || '';
         apiInput.style.width = '100%';
         apiInput.style.marginBottom = '10px';
+        const apiHint = document.createElement('div');
+        apiHint.style.display = 'flex';
+        apiHint.style.justifyContent = 'space-between';
+        apiHint.style.alignItems = 'center';
+        apiHint.style.marginBottom = '10px';
+        apiHint.innerHTML = '<small style="color: var(--text-dim);">Necesario para renderizado de alta fidelidad de Word/Excel.</small>';
+        const apiLink = document.createElement('a');
+        apiLink.href = 'https://www.convertapi.com/';
+        apiLink.target = '_blank';
+        apiLink.rel = 'noreferrer';
+        apiLink.textContent = 'Obtener API Key gratuita';
+        apiLink.style.color = 'var(--accent)';
+        apiLink.style.fontWeight = '600';
+        apiHint.appendChild(apiLink);
         const themeLabel = document.createElement('label');
         themeLabel.textContent = 'Tema';
         themeLabel.style.display = 'block';
@@ -1898,7 +2208,7 @@
         themeSelect.style.width = '100%';
         themeSelect.style.padding = '6px';
         themeSelect.style.marginBottom = '12px';
-        body.append(apiInput, themeLabel, themeSelect);
+        body.append(apiInput, apiHint, themeLabel, themeSelect);
         UIManager.showModal('Ajustes', body, [
           { text: 'Guardar', onClick: () => { this.saveConfig({ apiKeyOfuscada: apiInput.value, theme: themeSelect.value }); this.applyTheme(themeSelect.value); UIManager.hideModal(); } },
           { text: 'Cerrar', onClick: () => UIManager.hideModal() }
