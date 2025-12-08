@@ -133,6 +133,63 @@
       letter-spacing: 0.3px;
     }
 
+    .command-palette-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.35);
+      backdrop-filter: blur(10px);
+      display: none;
+      align-items: flex-start;
+      justify-content: center;
+      padding-top: 120px;
+      z-index: 180;
+    }
+
+    .command-palette-backdrop.show { display: flex; }
+
+    .command-palette {
+      width: min(680px, 92vw);
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: var(--shadow-elevate);
+      overflow: hidden;
+      animation: fadeIn 0.15s ease;
+    }
+
+    .command-palette header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .command-palette header input {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      color: var(--text-primary);
+      outline: none;
+    }
+
+    .command-palette ul { list-style: none; max-height: 320px; overflow: auto; }
+
+    .command-palette li {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .command-palette li.active { background: rgba(255, 255, 255, 0.05); }
+
+    .command-palette li span.meta { color: var(--text-dim); font-size: 12px; }
+
     header button i { color: var(--accent); }
 
     header button:hover,
@@ -253,6 +310,13 @@
       margin: 12px auto;
       box-shadow: 0 6px 20px rgba(0,0,0,0.35);
       background: #111;
+    }
+
+    .annotation-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 5;
+      pointer-events: auto;
     }
 
     .pdf-overlay {
@@ -732,6 +796,13 @@
       background: rgba(255, 255, 255, 0.05);
     }
 
+    .editor-toolbar button.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: rgba(255, 255, 255, 0.18);
+      box-shadow: 0 6px 20px rgba(124, 93, 250, 0.4);
+    }
+
     .split-view {
       display: flex;
       height: 100%;
@@ -808,6 +879,7 @@
       <button id="export-btn"><i class="fa-solid fa-file-export"></i> Exportar</button>
       <button id="settings-btn"><i class="fa-solid fa-gear"></i> Ajustes</button>
       <button id="help-btn"><i class="fa-regular fa-circle-question"></i></button>
+      <button id="fullscreen-btn" title="Pantalla completa"><i class="fa-solid fa-expand"></i></button>
       <span class="pill" id="session-info">Sesión lista</span>
     </header>
     <main>
@@ -895,6 +967,16 @@
     </div>
   </div>
 
+  <div class="command-palette-backdrop" id="command-palette-backdrop">
+    <div class="command-palette">
+      <header>
+        <i class="fa-solid fa-terminal" style="color: var(--accent);"></i>
+        <input id="command-input" type="text" placeholder="Escribe un comando o acción... (Ctrl + K)" autocomplete="off" />
+      </header>
+      <ul id="command-list"></ul>
+    </div>
+  </div>
+
   <input type="file" id="file-input" class="hidden" multiple />
 
   <script type="module">
@@ -910,11 +992,16 @@
           monaco: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.52.0/min/vs/loader.min.js',
           marked: 'https://cdnjs.cloudflare.com/ajax/libs/marked/11.2.0/marked.min.js',
           dompurify: 'https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.5/purify.min.js',
+          mermaid: 'https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js',
           papaparse: 'https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js',
           mammoth: 'https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.8.0/mammoth.browser.min.js',
           sheetjs: 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
           jsdiff: 'https://cdnjs.cloudflare.com/ajax/libs/diff/5.2.0/diff.min.js',
-          pyodide: 'https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js'
+          pyodide: 'https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js',
+          prettier: 'https://unpkg.com/prettier@3.0.3/standalone.js',
+          prettierBabel: 'https://unpkg.com/prettier@3.0.3/parser-babel.js',
+          prettierPostcss: 'https://unpkg.com/prettier@3.0.3/parser-postcss.js',
+          katex: 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js'
         };
       }
       static get instance() {
@@ -1025,6 +1112,11 @@
         this.toastContainer = document.getElementById('toast-container');
         this.welcomeScreen = document.getElementById('welcome-screen');
         this.welcomeRecents = document.getElementById('welcome-recents');
+        this.commandBackdrop = document.getElementById('command-palette-backdrop');
+        this.commandInput = document.getElementById('command-input');
+        this.commandList = document.getElementById('command-list');
+        this.filteredCommands = [];
+        this.selectedCommandIndex = 0;
         this.attachListeners();
       }
 
@@ -1036,6 +1128,16 @@
             this.overflowMenu.classList.add('hidden');
           }
           if (!this.contextMenu.contains(e.target)) this.contextMenu.style.display = 'none';
+        });
+        this.commandBackdrop.addEventListener('click', (e) => { if (e.target === this.commandBackdrop) this.hideCommandPalette(); });
+        this.commandInput.addEventListener('input', () => this.renderCommandList());
+        document.addEventListener('keydown', (e) => {
+          if (!this.isPaletteOpen()) return;
+          if (['ArrowDown', 'ArrowUp', 'Enter', 'Escape'].includes(e.key)) e.preventDefault();
+          if (e.key === 'ArrowDown') this.moveCommandSelection(1);
+          if (e.key === 'ArrowUp') this.moveCommandSelection(-1);
+          if (e.key === 'Enter') this.executeSelectedCommand();
+          if (e.key === 'Escape') this.hideCommandPalette();
         });
         document.addEventListener('contextmenu', (e) => {
           if (e.defaultPrevented) return;
@@ -1049,6 +1151,49 @@
             EditorFactory.editors.forEach(ed => ed.layout());
           }
         });
+      }
+
+      static isPaletteOpen() { return this.commandBackdrop.classList.contains('show'); }
+
+      static showCommandPalette(commands = []) {
+        this.commandActions = commands;
+        this.commandInput.value = '';
+        this.commandBackdrop.classList.add('show');
+        this.commandInput.focus();
+        this.renderCommandList();
+      }
+
+      static hideCommandPalette() {
+        this.commandBackdrop.classList.remove('show');
+      }
+
+      static renderCommandList() {
+        const query = this.commandInput.value?.toLowerCase() || '';
+        this.filteredCommands = (this.commandActions || []).filter(c =>
+          c.label.toLowerCase().includes(query) || (c.keywords || '').toLowerCase().includes(query)
+        );
+        if (!this.filteredCommands.length) this.selectedCommandIndex = 0; else this.selectedCommandIndex = Math.min(this.selectedCommandIndex, this.filteredCommands.length - 1);
+        this.commandList.innerHTML = '';
+        this.filteredCommands.forEach((cmd, idx) => {
+          const li = document.createElement('li');
+          li.className = idx === this.selectedCommandIndex ? 'active' : '';
+          li.innerHTML = `<span>${cmd.label}</span><span class="meta">${cmd.meta || ''}</span>`;
+          li.onclick = () => { this.selectedCommandIndex = idx; this.executeSelectedCommand(); };
+          this.commandList.appendChild(li);
+        });
+      }
+
+      static moveCommandSelection(delta) {
+        if (!this.filteredCommands.length) return;
+        this.selectedCommandIndex = (this.selectedCommandIndex + delta + this.filteredCommands.length) % this.filteredCommands.length;
+        this.renderCommandList();
+      }
+
+      static executeSelectedCommand() {
+        const cmd = this.filteredCommands[this.selectedCommandIndex];
+        if (!cmd) return;
+        try { cmd.action?.(); } catch (err) { UIManager.showToast('Error ejecutando comando: ' + err, 'error'); }
+        this.hideCommandPalette();
       }
 
       static setLoading(state, text = 'Cargando...') {
@@ -1097,6 +1242,16 @@
         };
         el.querySelector('.close').onclick = (ev) => { ev.stopPropagation(); App.instance.closeTab(tab.id); };
         return el;
+      }
+
+      static updateFullscreenButton(isFull) {
+        const btn = document.getElementById('fullscreen-btn');
+        if (!btn) return;
+        const icon = btn.querySelector('i');
+        if (!icon) return;
+        icon.classList.toggle('fa-expand', !isFull);
+        icon.classList.toggle('fa-compress', isFull);
+        btn.title = isFull ? 'Salir de pantalla completa' : 'Pantalla completa';
       }
 
       static toggleOverflowMenu() {
@@ -1294,17 +1449,71 @@
       static editors = new Set();
 
       static async createJsonView(fileMeta) {
+        await PluginLoader.instance.load('monaco');
         const container = document.createElement('div');
-        container.className = 'json-tree';
-        const text = fileMeta.blob ? await fileMeta.blob.text() : '{}';
-        let data;
-        try { data = JSON.parse(text); } catch (e) { container.textContent = 'JSON inválido'; return container; }
+        container.className = 'split-view';
+        container.style.position = 'relative';
+        const left = document.createElement('div');
+        left.className = 'split-pane editor-pane';
+        const right = document.createElement('div');
+        right.className = 'split-pane preview-pane';
+        right.style.overflow = 'auto';
+        const resizer = document.createElement('div');
+        resizer.className = 'split-resizer';
+        const toggle = document.createElement('button');
+        toggle.className = 'mobile-toggle';
+        toggle.textContent = '👁️';
+        toggle.title = 'Alternar árbol';
+        toggle.onclick = () => {
+          container.classList.toggle('show-preview');
+          toggle.textContent = container.classList.contains('show-preview') ? '✏️' : '👁️';
+        };
 
-        const renderNode = (key, value) => {
+        const editorHost = document.createElement('div');
+        editorHost.style.height = '100%';
+        const treeContainer = document.createElement('div');
+        treeContainer.className = 'json-tree';
+        right.appendChild(treeContainer);
+        left.appendChild(editorHost);
+        container.append(left, resizer, right, toggle);
+
+        const monacoEditor = monaco.editor.create(editorHost, {
+          value: fileMeta.blob ? await fileMeta.blob.text() : '{}',
+          language: 'json',
+          theme: App.instance.config.theme === 'dark' ? 'vs-dark' : 'vs',
+          automaticLayout: true,
+          minimap: { enabled: false },
+          fontFamily: 'JetBrains Mono, Consolas, monospace',
+          fontSize: 14,
+          mouseWheelZoom: true
+        });
+        EditorFactory.editors.add(monacoEditor);
+
+        let dragging = false;
+        resizer.addEventListener('mousedown', () => dragging = true);
+        window.addEventListener('mouseup', () => dragging = false);
+        window.addEventListener('mousemove', (e) => {
+          if (!dragging) return;
+          const pct = e.clientX / container.clientWidth;
+          left.style.flex = pct;
+          right.style.flex = 1 - pct;
+        });
+
+        const assign = (obj, path, val) => {
+          if (!path.length) return val;
+          const [p, ...rest] = path;
+          const clone = Array.isArray(obj) ? [...obj] : { ...obj };
+          const key = Array.isArray(obj) ? Number(p) : p;
+          clone[key] = assign(clone[key], rest, val);
+          return clone;
+        };
+
+        const renderNode = (key, value, path = []) => {
           const node = document.createElement('li');
           node.className = 'json-node';
-          const toggle = document.createElement('span');
-          toggle.className = 'toggle';
+          node.dataset.path = path.join('.');
+          const toggleEl = document.createElement('span');
+          toggleEl.className = 'toggle';
           const keySpan = document.createElement('span');
           keySpan.className = 'key';
           keySpan.textContent = key !== null ? `${key}: ` : '';
@@ -1314,43 +1523,37 @@
           typeSpan.className = 'type';
 
           const wrapper = document.createElement('div');
-          wrapper.append(toggle, keySpan);
+          wrapper.append(toggleEl, keySpan);
 
           if (typeof value === 'object' && value !== null) {
-            toggle.textContent = '▾';
+            toggleEl.textContent = '▾';
             const childList = document.createElement('ul');
             const isArray = Array.isArray(value);
             typeSpan.textContent = isArray ? '[ ]' : '{ }';
             wrapper.append(typeSpan);
-            Object.entries(value).forEach(([k, v]) => childList.appendChild(renderNode(k, v)));
+            Object.entries(value).forEach(([k, v]) => childList.appendChild(renderNode(k, v, [...path, k])));
             node.append(wrapper, childList);
-            toggle.onclick = () => {
+            toggleEl.onclick = () => {
               node.classList.toggle('collapsed');
-              toggle.textContent = node.classList.contains('collapsed') ? '▸' : '▾';
+              toggleEl.textContent = node.classList.contains('collapsed') ? '▸' : '▾';
             };
           } else {
-            toggle.textContent = '';
+            toggleEl.textContent = '';
             valueSpan.textContent = value;
             valueSpan.contentEditable = true;
             valueSpan.classList.add('editable');
             valueSpan.ondblclick = () => document.execCommand('selectAll', false, null);
-            valueSpan.onblur = async () => {
+            valueSpan.onblur = () => {
               const newVal = valueSpan.textContent;
               const parsed = isNaN(Number(newVal)) ? newVal : Number(newVal);
-              const assign = (obj, path, val) => {
-                if (!path.length) return val;
-                const [p, ...rest] = path;
-                const clone = Array.isArray(obj) ? [...obj] : { ...obj };
-                const key = Array.isArray(obj) ? Number(p) : p;
-                clone[key] = assign(clone[key], rest, val);
-                return clone;
-              };
-              data = assign(data, node.dataset.path.split('.'), parsed);
-              const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-              fileMeta.blob = blob;
-              fileMeta.isDirty = false;
-              await App.instance.fs.putFile(fileMeta);
-              App.instance.persistSession();
+              const currentData = parseEditorValue();
+              if (!currentData) return;
+              const updated = assign(currentData, path, parsed);
+              const jsonText = JSON.stringify(updated, null, 2);
+              monacoEditor.setValue(jsonText);
+              fileMeta.blob = new Blob([jsonText], { type: 'application/json' });
+              App.instance.markDirty(fileMeta.id, true);
+              buildTree(updated);
             };
             wrapper.append(valueSpan);
             node.append(wrapper);
@@ -1358,28 +1561,66 @@
           return node;
         };
 
-        const buildTree = (obj) => {
-          const root = document.createElement('ul');
-          Object.entries(obj).forEach(([k, v]) => {
-            const li = renderNode(k, v);
-            li.dataset.path = k;
-            root.appendChild(li);
-          });
-          return root;
+        const parseEditorValue = () => {
+          const value = monacoEditor.getValue();
+          try {
+            return JSON.parse(value);
+          } catch (err) {
+            treeContainer.innerHTML = `<div style="color: var(--error); padding: 8px;">JSON inválido: ${err.message}</div>`;
+            return null;
+          }
         };
 
-        const tree = buildTree(data);
-        tree.querySelectorAll('li').forEach(li => {
-          const parentPath = li.parentElement.closest('li')?.dataset.path;
-          if (parentPath) li.dataset.path = `${parentPath}.${li.dataset.path}`;
+        const buildTree = (obj) => {
+          treeContainer.innerHTML = '';
+          if (!obj) return;
+          const root = document.createElement('ul');
+          Object.entries(obj).forEach(([k, v]) => {
+            const li = renderNode(k, v, [k]);
+            root.appendChild(li);
+          });
+          treeContainer.appendChild(root);
+        };
+
+        const syncBlob = () => {
+          const value = monacoEditor.getValue();
+          fileMeta.blob = new Blob([value], { type: 'application/json' });
+          App.instance.markDirty(fileMeta.id, true);
+        };
+
+        const updateTreeFromEditor = () => {
+          const parsed = parseEditorValue();
+          if (parsed) {
+            buildTree(parsed);
+            syncBlob();
+          }
+        };
+
+        let debounceTimer = null;
+        monacoEditor.onDidChangeModelContent(() => {
+          clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(updateTreeFromEditor, 250);
         });
-        container.appendChild(tree);
+        monacoEditor.onDidBlurEditorText(updateTreeFromEditor);
+
+        updateTreeFromEditor();
         return container;
       }
 
       static async createMarkdownView(fileMeta) {
         await PluginLoader.instance.load('marked');
         await PluginLoader.instance.load('dompurify');
+        try { await PluginLoader.instance.load('mermaid'); } catch (err) { console.warn('Mermaid no disponible', err); }
+        try {
+          await PluginLoader.instance.load('katex');
+          if (!document.getElementById('katex-css')) {
+            const link = document.createElement('link');
+            link.id = 'katex-css';
+            link.rel = 'stylesheet';
+            link.href = 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css';
+            document.head.appendChild(link);
+          }
+        } catch (err) { console.warn('KaTeX no disponible', err); }
         const container = document.createElement('div');
         container.className = 'split-view';
         container.style.position = 'relative';
@@ -1415,9 +1656,30 @@
         const updatePreview = () => {
           const html = marked.parse(textarea.value);
           preview.innerHTML = DOMPurify.sanitize(html);
+          if (window.mermaid) {
+            try {
+              mermaid.initialize({ startOnLoad: false, theme: 'dark' });
+              mermaid.run({ nodes: preview.querySelectorAll('.language-mermaid') });
+            } catch (err) { console.warn('Mermaid render error', err); }
+          }
+          if (window.katex) {
+            try {
+              preview.querySelectorAll('code.language-math, pre.language-math').forEach(block => {
+                const formula = block.textContent;
+                const span = document.createElement('div');
+                span.className = 'katex-render';
+                span.innerHTML = katex.renderToString(formula, { throwOnError: false, displayMode: true });
+                block.replaceWith(span);
+              });
+            } catch (err) { console.warn('KaTeX render error', err); }
+          }
           App.instance.markDirty(fileMeta.id, true);
         };
         textarea.addEventListener('input', updatePreview);
+        textarea.addEventListener('scroll', () => {
+          const pct = textarea.scrollTop / Math.max(1, textarea.scrollHeight - textarea.clientHeight);
+          preview.scrollTop = pct * Math.max(0, preview.scrollHeight - preview.clientHeight);
+        });
         let dragging = false;
         resizer.addEventListener('mousedown', () => dragging = true);
         window.addEventListener('mouseup', () => dragging = false);
@@ -1449,31 +1711,106 @@
         consoleHost.style.padding = '8px';
         consoleHost.style.overflow = 'auto';
         const toolbar = document.createElement('div');
+        toolbar.className = 'editor-toolbar';
         toolbar.style.display = 'flex';
         toolbar.style.gap = '8px';
         toolbar.style.padding = '8px';
         toolbar.style.borderBottom = '1px solid var(--border)';
+        const formatBtn = document.createElement('button');
+        formatBtn.textContent = 'Formato';
+        const wrapBtn = document.createElement('button');
+        wrapBtn.innerHTML = '<i class="fa-solid fa-align-left"></i> Wrap';
         const runBtn = document.createElement('button');
         runBtn.textContent = 'Run';
-        toolbar.appendChild(runBtn);
+        toolbar.append(formatBtn, wrapBtn, runBtn);
         container.append(toolbar, editorHost, consoleHost);
+
+        const pagination = document.createElement('div');
+        pagination.style.display = 'flex';
+        pagination.style.alignItems = 'center';
+        pagination.style.gap = '8px';
+        pagination.style.padding = '6px 8px';
+        pagination.style.borderTop = '1px solid var(--border)';
+        pagination.style.fontSize = '12px';
+        const prevBtn = document.createElement('button');
+        prevBtn.textContent = 'Página Anterior';
+        const nextBtn = document.createElement('button');
+        nextBtn.textContent = 'Página Siguiente';
+        const pageLabel = document.createElement('span');
+        pageLabel.textContent = '';
+        pagination.append(prevBtn, nextBtn, pageLabel);
+        container.append(pagination);
+
+        const chunkSize = 50 * 1024;
+        const isLarge = fileMeta.blob && fileMeta.blob.size > 5 * 1024 * 1024;
+        const totalChunks = fileMeta.blob ? Math.max(1, Math.ceil(fileMeta.blob.size / chunkSize)) : 1;
+        let currentChunk = 0;
+        let editor;
+        let isWrapped = false;
 
         // Monaco bootstrap
         require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.52.0/min/vs' } });
         require(['vs/editor/editor.main'], async () => {
-          const text = fileMeta.blob ? await fileMeta.blob.text() : '';
-          const editor = monaco.editor.create(editorHost, {
-            value: text,
+          const initialText = !isLarge && fileMeta.blob ? await fileMeta.blob.text() : '';
+          editor = monaco.editor.create(editorHost, {
+            value: initialText,
             language: EditorFactory.mapLanguage(fileMeta.name),
             theme: 'vs-dark',
             minimap: { enabled: false },
             wordWrap: 'off',
             fontLigatures: true,
-            automaticLayout: true
+            automaticLayout: true,
+            mouseWheelZoom: true
           });
           EditorFactory.editors.add(editor);
+          const loadChunk = async (index) => {
+            if (!fileMeta.blob) return;
+            currentChunk = Math.min(Math.max(index, 0), totalChunks - 1);
+            const start = currentChunk * chunkSize;
+            const end = Math.min(start + chunkSize, fileMeta.blob.size);
+            const slice = await fileMeta.blob.slice(start, end).text();
+            editor.setValue(slice);
+            pageLabel.textContent = `Página ${currentChunk + 1} / ${totalChunks}`;
+            prevBtn.disabled = currentChunk === 0;
+            nextBtn.disabled = currentChunk >= totalChunks - 1;
+          };
+
+          if (isLarge) {
+            pagination.style.display = 'flex';
+            await loadChunk(0);
+          } else {
+            pagination.style.display = 'none';
+            pageLabel.textContent = '';
+          }
+
+          prevBtn.onclick = () => loadChunk(currentChunk - 1);
+          nextBtn.onclick = () => loadChunk(currentChunk + 1);
           runBtn.onclick = () => EditorFactory.runCode(editor.getValue(), fileMeta.name, consoleHost);
-          editor.onDidBlurEditorText(() => App.instance.saveContent(fileMeta.id, editor.getValue()));
+          wrapBtn.onclick = () => {
+            isWrapped = !isWrapped;
+            editor.updateOptions({ wordWrap: isWrapped ? 'on' : 'off' });
+            wrapBtn.classList.toggle('active', isWrapped);
+          };
+          formatBtn.onclick = async () => {
+            try {
+              await PluginLoader.instance.load('prettier');
+              const parser = EditorFactory.mapPrettierParser(fileMeta.name);
+              const plugin = parser === 'css' || parser === 'scss' ? 'prettierPostcss' : 'prettierBabel';
+              await PluginLoader.instance.load(plugin);
+              const formatted = prettier.format(editor.getValue(), {
+                parser,
+                plugins: [prettierPlugins[plugin === 'prettierBabel' ? 'babel' : 'postcss']]
+              });
+              editor.setValue(formatted);
+              App.instance.saveContent(fileMeta.id, formatted);
+              UIManager.showToast('Documento formateado con Prettier.', 'success');
+            } catch (err) {
+              UIManager.showToast('Error formateando: ' + err, 'error');
+            }
+          };
+          if (!isLarge) {
+            editor.onDidBlurEditorText(() => App.instance.saveContent(fileMeta.id, editor.getValue()));
+          }
           const updateCursor = () => {
             const pos = editor.getPosition();
             if (pos) UIManager.updateStatusDetail(`Ln ${pos.lineNumber}, Col ${pos.column}`);
@@ -1488,6 +1825,12 @@
         const ext = name.split('.').pop();
         const mapping = { js: 'javascript', ts: 'typescript', css: 'css', html: 'html', json: 'json', java: 'java', py: 'python' };
         return mapping[ext] || 'plaintext';
+      }
+
+      static mapPrettierParser(name) {
+        const ext = name.split('.').pop();
+        const mapping = { js: 'babel', ts: 'babel', json: 'json', css: 'css', scss: 'scss', html: 'html' };
+        return mapping[ext] || 'babel';
       }
 
       static runCode(code, name, consoleHost) {
@@ -1590,6 +1933,8 @@
         orgBtn.innerHTML = '<i class="fa-solid fa-table-cells"></i> Organizar páginas';
         const saveBtn = document.createElement('button');
         saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Guardar PDF';
+        const toWordBtn = document.createElement('button');
+        toWordBtn.innerHTML = '<i class="fa-solid fa-file-word"></i> a Word';
         const info = document.createElement('span');
         info.textContent = 'Renderizando...';
 
@@ -1599,17 +1944,33 @@
           createLabeledControl('Pincel', strokeWidthInput),
           createLabeledControl('Tipografía', fontFamilySelect)
         );
-        actionGroup.append(clearBtn, orgBtn, saveBtn, info);
+        actionGroup.append(clearBtn, orgBtn, saveBtn, toWordBtn, info);
         toolbar.append(modeGroup, styleGroup, actionGroup);
         const pagesWrap = document.createElement('div');
         container.append(toolbar, pagesWrap);
 
         const url = URL.createObjectURL(fileMeta.blob);
         const pdf = await pdfjsLib.getDocument(url).promise;
+        const linkService = new pdfjsLib.SimpleLinkService();
+        linkService.setDocument(pdf);
         const pageOrder = Array.from({ length: pdf.numPages }, (_, i) => i + 1);
         const pageNodes = new Map();
         const pageCanvases = new Map();
         UIManager.updateStatusDetail(`${pdf.numPages} págs`);
+
+        if (!document.getElementById('pdf-annotation-style')) {
+          const style = document.createElement('style');
+          style.id = 'pdf-annotation-style';
+          style.textContent = `
+            .annotation-layer input,
+            .annotation-layer textarea,
+            .annotation-layer select,
+            .annotation-layer button {
+              font: inherit;
+            }
+          `;
+          document.head.appendChild(style);
+        }
 
         const updateContextControls = (object) => {
           const enabled = !!object || currentMode !== 'navigate';
@@ -1686,23 +2047,37 @@
           wrapper.dataset.page = pageNumber;
           if (!pageNodes.has(pageNumber)) {
             const canvas = document.createElement('canvas');
+            const annotationLayer = document.createElement('div');
+            annotationLayer.className = 'annotation-layer';
             const overlay = document.createElement('canvas');
             overlay.className = 'pdf-overlay';
             overlay.id = `pdf-overlay-${pageNumber}`;
-            wrapper.append(canvas, overlay);
+            wrapper.append(canvas, annotationLayer, overlay);
             wrapper.dataset.rendered = 'false';
             pageNodes.set(pageNumber, wrapper);
           }
           const canvas = wrapper.querySelector('canvas:not(.pdf-overlay)');
+          const annotationLayer = wrapper.querySelector('.annotation-layer');
           const overlay = wrapper.querySelector('.pdf-overlay');
           if (wrapper.dataset.rendered === 'true') return;
           const page = await pdf.getPage(pageNumber);
           const viewport = page.getViewport({ scale: 1.25 });
           canvas.height = viewport.height;
           canvas.width = viewport.width;
+          annotationLayer.style.height = `${viewport.height}px`;
+          annotationLayer.style.width = `${viewport.width}px`;
           overlay.height = viewport.height;
           overlay.width = viewport.width;
           await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+          const annotations = await page.getAnnotations({ intent: 'display' });
+          pdfjsLib.AnnotationLayer.render({
+            annotations,
+            div: annotationLayer,
+            page,
+            viewport,
+            linkService,
+            renderInteractiveForms: true,
+          });
           wrapper.dataset.rendered = 'true';
 
           let fabricCanvas = pageCanvases.get(pageNumber);
@@ -1835,6 +2210,38 @@
           grid.appendChild(thumb);
         }
         UIManager.showModal('Organizar páginas', body, [{ text: 'Cerrar', onClick: () => UIManager.hideModal() }]);
+        };
+
+        toWordBtn.onclick = async () => {
+          const config = App.instance.getConfig();
+          if (!config.apiKeyOfuscada) {
+            UIManager.showToast('Configura la API Key en Ajustes para convertir a Word', 'error');
+            return;
+          }
+          UIManager.setLoading(true, 'Convirtiendo...');
+          try {
+            const resp = await fetch('https://v2.convertapi.com/convert/pdf/to/docx', {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${config.apiKeyOfuscada}` },
+              body: fileMeta.blob
+            });
+            if (!resp.ok) throw new Error(`Estado ${resp.status}`);
+            const docxBlob = await resp.blob();
+            const url = URL.createObjectURL(docxBlob);
+            const a = document.createElement('a');
+            const base = fileMeta.name.replace(/\.pdf$/i, '') || 'documento';
+            a.href = url;
+            a.download = `${base}.docx`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 1500);
+            UIManager.showToast('Conversión completada', 'success');
+          } catch (err) {
+            UIManager.showToast('Error al convertir a Word: ' + err, 'error');
+          } finally {
+            UIManager.setLoading(false);
+          }
         };
 
         saveBtn.onclick = async () => {
@@ -2068,19 +2475,51 @@
       }
 
       static async createHexView(fileMeta) {
-        const buffer = new Uint8Array(await fileMeta.blob.arrayBuffer());
         const container = document.createElement('div');
         container.style.fontFamily = 'JetBrains Mono, monospace';
         container.style.whiteSpace = 'pre';
-        const chunkSize = 16;
-        let output = '';
-        for (let i = 0; i < buffer.length; i += chunkSize) {
-          const slice = buffer.slice(i, i + chunkSize);
-          const hex = Array.from(slice).map(b => b.toString(16).padStart(2, '0')).join(' ');
-          const ascii = Array.from(slice).map(b => (b > 31 && b < 127) ? String.fromCharCode(b) : '.').join('');
-          output += `${i.toString(16).padStart(8, '0')}  ${hex.padEnd(48, ' ')}  ${ascii}\n`;
-        }
-        container.textContent = output;
+        const viewer = document.createElement('div');
+        const controls = document.createElement('div');
+        controls.style.display = 'flex';
+        controls.style.gap = '8px';
+        controls.style.alignItems = 'center';
+        controls.style.padding = '8px 0';
+        const prevBtn = document.createElement('button');
+        prevBtn.textContent = 'Página Anterior';
+        const nextBtn = document.createElement('button');
+        nextBtn.textContent = 'Página Siguiente';
+        const label = document.createElement('span');
+        controls.append(prevBtn, nextBtn, label);
+        container.append(viewer, controls);
+
+        const pageSize = 50 * 1024;
+        const totalPages = fileMeta.blob ? Math.max(1, Math.ceil(fileMeta.blob.size / pageSize)) : 1;
+        let currentPage = 0;
+
+        const renderPage = async (pageIndex) => {
+          if (!fileMeta.blob) return;
+          currentPage = Math.min(Math.max(pageIndex, 0), totalPages - 1);
+          const start = currentPage * pageSize;
+          const end = Math.min(start + pageSize, fileMeta.blob.size);
+          const buffer = new Uint8Array(await fileMeta.blob.slice(start, end).arrayBuffer());
+          const rowSize = 16;
+          let output = '';
+          for (let i = 0; i < buffer.length; i += rowSize) {
+            const slice = buffer.slice(i, i + rowSize);
+            const hex = Array.from(slice).map(b => b.toString(16).padStart(2, '0')).join(' ');
+            const ascii = Array.from(slice).map(b => (b > 31 && b < 127) ? String.fromCharCode(b) : '.').join('');
+            output += `${(start + i).toString(16).padStart(8, '0')}  ${hex.padEnd(48, ' ')}  ${ascii}\n`;
+          }
+          viewer.textContent = output;
+          label.textContent = `Página ${currentPage + 1} / ${totalPages}`;
+          prevBtn.disabled = currentPage === 0;
+          nextBtn.disabled = currentPage >= totalPages - 1;
+        };
+
+        prevBtn.onclick = () => renderPage(currentPage - 1);
+        nextBtn.onclick = () => renderPage(currentPage + 1);
+        await renderPage(0);
+        controls.style.display = totalPages > 1 ? 'flex' : 'none';
         return container;
       }
     }
@@ -2153,6 +2592,27 @@
         UIManager.updateStatusDetail(UIManager.statusDetail?.textContent || '');
       }
 
+      toggleTheme() {
+        const next = this.config.theme === 'dark' ? 'light' : 'dark';
+        this.saveConfig({ theme: next });
+        this.applyTheme(next);
+        UIManager.showToast(`Tema ${next === 'dark' ? 'oscuro' : 'claro'} activo`, 'info');
+      }
+
+      async toggleFullscreen() {
+        try {
+          if (!document.fullscreenElement) {
+            await document.documentElement.requestFullscreen();
+            UIManager.updateFullscreenButton(true);
+          } else {
+            await document.exitFullscreen();
+            UIManager.updateFullscreenButton(false);
+          }
+        } catch (err) {
+          UIManager.showToast('No se pudo alternar pantalla completa: ' + err, 'error');
+        }
+      }
+
       async init() {
         UIManager.setup();
         await this.fs.init();
@@ -2169,12 +2629,14 @@
         document.getElementById('export-btn').onclick = () => this.exportFile();
         document.getElementById('settings-btn').onclick = () => this.openSettings();
         document.getElementById('help-btn').onclick = () => this.showCheatsheet();
+        document.getElementById('fullscreen-btn').onclick = () => this.toggleFullscreen();
         document.getElementById('quick-open').onclick = () => document.getElementById('file-input').click();
         document.getElementById('quick-settings').onclick = () => this.openSettings();
         document.getElementById('quick-draft').onclick = () => this.createDraft();
         document.getElementById('panic-btn').onclick = () => this.panicMode();
         window.onblur = () => this.autosave();
         window.addEventListener('keydown', (e) => this.handleShortcuts(e));
+        document.addEventListener('fullscreenchange', () => UIManager.updateFullscreenButton(!!document.fullscreenElement));
         const shell = document.getElementById('app-shell');
         const onDrag = (e) => { e.preventDefault(); e.stopPropagation(); document.body.classList.add('dragging'); };
         ['dragenter', 'dragover'].forEach(ev => shell.addEventListener(ev, onDrag));
@@ -2196,10 +2658,28 @@
           e.preventDefault();
           this.printActive();
         }
+        if (e.ctrlKey && e.key.toLowerCase() === 'k') {
+          e.preventDefault();
+          UIManager.showCommandPalette(this.getCommandActions());
+        }
+      }
+
+      getCommandActions() {
+        return [
+          { label: 'Guardar', meta: 'Ctrl + S', keywords: 'save', action: () => { this.autosave(); UIManager.showToast('Intentando guardar pestañas activas.', 'info'); } },
+          { label: 'Cerrar pestaña', keywords: 'close tab', action: () => this.closeTab(this.activeTabId) },
+          { label: 'Buscar', meta: 'Ctrl + F', keywords: 'search find', action: () => this.globalSearch() },
+          { label: 'Modo Oscuro/Claro', keywords: 'tema dark light', action: () => this.toggleTheme() },
+          { label: 'Alternar Pantalla Completa', keywords: 'fullscreen expand', action: () => this.toggleFullscreen() }
+        ];
       }
 
       async handleFileInput(fileList) {
-        const files = Array.from(fileList);
+        let files = Array.from(fileList);
+        if (files.length > 10) {
+          files = files.slice(0, 10);
+          UIManager.showToast('Límite de cola excedido: solo se cargaron los primeros 10 archivos', 'error');
+        }
         for (const file of files) {
           if (file.size > 10 * 1024 * 1024) {
             const proceed = await UIManager.showConfirm('Modo Valiente', `${file.name} supera 10MB. ¿Activar de todos modos?`);
@@ -2317,12 +2797,55 @@
         this.persistSession();
       }
 
-      showProps(id) {
+      async showProps(id) {
         const file = this.openTabs.find(f => f.id === id);
         if (!file) return;
         const body = document.createElement('div');
         body.innerHTML = `<p><strong>Nombre:</strong> ${file.name}</p><p><strong>Tamaño:</strong> ${(file.blob?.size || 0)} bytes</p><p><strong>Última modificación:</strong> ${new Date(file.lastModified || Date.now()).toLocaleString()}</p>`;
-        UIManager.showModal('Propiedades', body, [{ text: 'Cerrar', onClick: () => UIManager.hideModal() }]);
+        const actions = [{ text: 'Cerrar', onClick: () => UIManager.hideModal() }];
+        if ((file.type || file.blob?.type || '').includes('pdf') || file.name.toLowerCase().endsWith('.pdf')) {
+          const metaWrap = document.createElement('div');
+          metaWrap.style.marginTop = '12px';
+          metaWrap.innerHTML = '<hr style="border-color: var(--border); margin: 10px 0;" />';
+          const titleInput = document.createElement('input');
+          titleInput.placeholder = 'Título PDF';
+          titleInput.style.width = '100%';
+          titleInput.style.marginBottom = '8px';
+          const authorInput = document.createElement('input');
+          authorInput.placeholder = 'Autor';
+          authorInput.style.width = '100%';
+          body.append(metaWrap, titleInput, authorInput);
+          try {
+            await PluginLoader.instance.load('pdflib');
+            const bytes = await file.blob.arrayBuffer();
+            const doc = await PDFLib.PDFDocument.load(bytes);
+            titleInput.value = doc.getTitle() || '';
+            authorInput.value = doc.getAuthor() || '';
+            actions.unshift({
+              text: 'Guardar metadatos',
+              onClick: async () => {
+                try {
+                  doc.setTitle(titleInput.value || undefined);
+                  doc.setAuthor(authorInput.value || undefined);
+                  const newBytes = await doc.save();
+                  file.blob = new Blob([newBytes], { type: 'application/pdf' });
+                  file.lastModified = Date.now();
+                  file.isDirty = false;
+                  await this.fs.putFile(file);
+                  this.persistSession();
+                  UIManager.renderTabs(this.openTabs);
+                  UIManager.showToast('Metadatos PDF actualizados.', 'success');
+                  UIManager.hideModal();
+                } catch (err) {
+                  UIManager.showToast('Error guardando metadatos: ' + err, 'error');
+                }
+              }
+            });
+          } catch (err) {
+            UIManager.showToast('No se pudo leer metadatos PDF: ' + err, 'error');
+          }
+        }
+        UIManager.showModal('Propiedades', body, actions);
       }
 
       async exportFile(id = this.activeTabId) {
@@ -2530,22 +3053,41 @@
       }
 
       printActive() {
-        const content = document.getElementById('content-scroll').cloneNode(true);
-        const frame = document.createElement('iframe');
-        frame.style.position = 'fixed';
-        frame.style.right = '0';
-        frame.style.bottom = '0';
-        frame.style.width = '0';
-        frame.style.height = '0';
-        document.body.appendChild(frame);
-        const doc = frame.contentDocument;
-        doc.open();
-        doc.write('<!DOCTYPE html><html><head><style>body{font-family:Inter,sans-serif;color:#000;background:#fff;padding:20px;} pre{white-space:pre-wrap;}</style></head><body></body></html>');
-        doc.body.appendChild(content);
-        doc.close();
-        frame.contentWindow.focus();
-        frame.contentWindow.print();
-        setTimeout(() => frame.remove(), 200);
+        const body = document.createElement('div');
+        body.style.display = 'flex';
+        body.style.flexDirection = 'column';
+        body.style.gap = '8px';
+        const ecoRow = document.createElement('label');
+        const eco = document.createElement('input');
+        eco.type = 'checkbox';
+        ecoRow.append(eco, document.createTextNode(' Modo Ahorro (Eco-Friendly)'));
+        const lineRow = document.createElement('label');
+        const lineNumbers = document.createElement('input');
+        lineNumbers.type = 'checkbox';
+        lineRow.append(lineNumbers, document.createTextNode(' Imprimir Números de Línea'));
+        body.append(ecoRow, lineRow);
+        UIManager.showModal('Opciones de impresión', body, [
+          { text: 'Cancelar', onClick: () => UIManager.hideModal() },
+          { text: 'Imprimir', onClick: () => {
+            UIManager.hideModal();
+            const style = document.createElement('style');
+            style.id = 'print-options-style';
+            let css = '@media print {';
+            if (eco.checked) {
+              css += 'body, #app-shell, .content { background: #fff !important; color: #000 !important; } * { box-shadow: none !important; background-color: transparent !important; color: #000 !important; }';
+            }
+            if (lineNumbers.checked) {
+              css += '.monaco-editor .margin, .monaco-editor .glyph-margin, .monaco-editor .line-numbers { display: block !important; color: #000 !important; }';
+              css += '.monaco-editor .monaco-editor-background, pre { background: #fff !important; color: #000 !important; }';
+            }
+            css += '}';
+            style.textContent = css;
+            document.head.appendChild(style);
+            const cleanup = () => { style.remove(); window.removeEventListener('afterprint', cleanup); };
+            window.addEventListener('afterprint', cleanup);
+            setTimeout(() => window.print(), 50);
+          } }
+        ]);
       }
     }
 
