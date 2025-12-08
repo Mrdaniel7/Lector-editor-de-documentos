@@ -1841,14 +1841,15 @@
           await EditorFactory.savePdfChanges(fileMeta, pageOrder, pageCanvases);
         };
 
-        document.addEventListener('keydown', (e) => {
-          if (e.key === 'Delete' && activeCanvas && activeObject) {
-            activeCanvas.remove(activeObject);
-            activeCanvas.requestRenderAll();
-            handleSelection(null, activeCanvas);
-            markDirty();
-          }
-        });
+          document.addEventListener('keydown', (e) => {
+            if (e.key === 'Delete' && activeCanvas && activeObject) {
+              if (activeObject.isEditing) return;
+              activeCanvas.remove(activeObject);
+              activeCanvas.requestRenderAll();
+              handleSelection(null, activeCanvas);
+              markDirty();
+            }
+          });
 
         updateContextControls(null);
 
