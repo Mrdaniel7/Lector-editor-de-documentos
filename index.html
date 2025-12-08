@@ -183,6 +183,11 @@
       border-bottom: 1px solid var(--border);
     }
 
+    .pdf-toolbar button.active {
+      background: rgba(124, 93, 250, 0.18);
+      border-color: rgba(124, 93, 250, 0.5);
+    }
+
     .pdf-page {
       position: relative;
       margin: 12px auto;
@@ -1463,13 +1468,36 @@
         container.style.position = 'relative';
         const toolbar = document.createElement('div');
         toolbar.className = 'pdf-toolbar';
+        const modeGroup = document.createElement('div');
+        modeGroup.style.display = 'flex';
+        modeGroup.style.gap = '6px';
+        const modes = [
+          { key: 'navigate', label: '✋ Navegar' },
+          { key: 'draw', label: '✏️ Dibujar' },
+          { key: 'text', label: 'T Texto' }
+        ];
+        let currentMode = 'navigate';
+        const modeButtons = modes.map(({ key, label }) => {
+          const btn = document.createElement('button');
+          btn.textContent = label;
+          btn.dataset.mode = key;
+          btn.onclick = () => setMode(key);
+          return btn;
+        });
+        modeButtons.forEach(btn => modeGroup.appendChild(btn));
+        const colorInput = document.createElement('input');
+        colorInput.type = 'color';
+        colorInput.value = '#ff0000';
+        colorInput.title = 'Color del trazo y texto';
+        const clearBtn = document.createElement('button');
+        clearBtn.textContent = 'Limpiar página';
         const orgBtn = document.createElement('button');
         orgBtn.textContent = 'Organizar páginas';
         const saveBtn = document.createElement('button');
         saveBtn.textContent = 'Guardar PDF';
         const info = document.createElement('span');
         info.textContent = 'Renderizando...';
-        toolbar.append(orgBtn, saveBtn, info);
+        toolbar.append(modeGroup, colorInput, clearBtn, orgBtn, saveBtn, info);
         const pagesWrap = document.createElement('div');
         container.append(toolbar, pagesWrap);
 
@@ -1479,6 +1507,27 @@
         const pageNodes = new Map();
         const strokes = new Map();
         UIManager.updateStatusDetail(`${pdf.numPages} págs`);
+
+        const updateOverlayInteractivity = () => {
+          pageOrder.forEach(num => {
+            const node = pageNodes.get(num);
+            if (!node) return;
+            const overlay = node.querySelector('.pdf-overlay');
+            if (!overlay) return;
+            overlay.style.pointerEvents = currentMode === 'navigate' ? 'none' : 'auto';
+            overlay.style.cursor = currentMode === 'draw' ? 'crosshair' : (currentMode === 'text' ? 'text' : 'default');
+          });
+        };
+
+        const setMode = (mode) => {
+          currentMode = mode;
+          modeButtons.forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.mode === mode);
+          });
+          updateOverlayInteractivity();
+        };
+
+        setMode(currentMode);
 
         const renderPage = async (pageNumber) => {
           const wrapper = pageNodes.get(pageNumber) || document.createElement('div');
@@ -1508,11 +1557,17 @@
           const overlayCtx = overlay.getContext('2d');
           let drawing = false;
           let last = null;
-          overlay.onmousedown = (e) => { drawing = true; last = { x: e.offsetX, y: e.offsetY }; overlayCtx.beginPath(); overlayCtx.moveTo(last.x, last.y); };
+          overlay.onmousedown = (e) => {
+            if (currentMode !== 'draw') return;
+            drawing = true;
+            last = { x: e.offsetX, y: e.offsetY };
+            overlayCtx.beginPath();
+            overlayCtx.moveTo(last.x, last.y);
+          };
           overlay.onmousemove = (e) => {
             if (!drawing) return;
             overlayCtx.lineWidth = 2;
-            overlayCtx.strokeStyle = '#fffa';
+            overlayCtx.strokeStyle = colorInput.value;
             overlayCtx.lineTo(e.offsetX, e.offsetY);
             overlayCtx.stroke();
             last = { x: e.offsetX, y: e.offsetY };
@@ -1525,14 +1580,42 @@
             App.instance.markDirty(fileMeta.id, true);
           };
           overlay.ondblclick = async (e) => {
+            if (currentMode !== 'text') return;
             const text = await UIManager.showInput('Añadir anotación', 'Texto a colocar', '');
             if (!text) return;
-            overlayCtx.fillStyle = '#fff';
+            overlayCtx.fillStyle = colorInput.value;
             overlayCtx.font = '16px Inter, sans-serif';
             overlayCtx.fillText(text, e.offsetX, e.offsetY);
             strokes.set(pageNumber, overlay.toDataURL());
             App.instance.markDirty(fileMeta.id, true);
           };
+
+          updateOverlayInteractivity();
+        };
+
+        const clearCurrentPage = () => {
+          const containerRect = container.getBoundingClientRect();
+          let targetPage = null;
+          let closestOffset = Infinity;
+          pageOrder.forEach(num => {
+            const node = pageNodes.get(num);
+            if (!node) return;
+            const rect = node.getBoundingClientRect();
+            if (rect.bottom < containerRect.top || rect.top > containerRect.bottom) return;
+            const offset = Math.abs(rect.top - containerRect.top);
+            if (offset < closestOffset) {
+              closestOffset = offset;
+              targetPage = num;
+            }
+          });
+          if (targetPage == null) return;
+          const overlay = pageNodes.get(targetPage).querySelector('.pdf-overlay');
+          if (!overlay) return;
+          const ctx = overlay.getContext('2d');
+          ctx.clearRect(0, 0, overlay.width, overlay.height);
+          strokes.delete(targetPage);
+          App.instance.markDirty(fileMeta.id, true);
+          UIManager.showToast(`Página ${targetPage} limpia`, 'info');
         };
 
         const ensurePages = () => {
@@ -1569,6 +1652,8 @@
 
         container.addEventListener('scroll', renderVisible);
         setTimeout(renderVisible, 30);
+
+        clearBtn.onclick = clearCurrentPage;
 
         orgBtn.onclick = async () => {
           const body = document.createElement('div');
@@ -1626,11 +1711,12 @@
             if (strokeUrl) {
               const pngBytes = await fetch(strokeUrl).then(r => r.arrayBuffer());
               const pngImage = await newDoc.embedPng(pngBytes);
+              const { width, height } = addedPage.getSize();
               addedPage.drawImage(pngImage, {
                 x: 0,
                 y: 0,
-                width: addedPage.getWidth(),
-                height: addedPage.getHeight()
+                width,
+                height
               });
             }
           }
