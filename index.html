@@ -3,657 +3,3095 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Atelier de Documentos</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SzlrxWUlpfuzQ+pcUCosxcglQRNAq/DZjVsC0lE0x1J9a9pcP5Vo0New+0PwQvlaXaVUearIOBhiXZ5V3ynxwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <title>Universal DocViewer</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"
+    integrity="sha512-ADblDQH3mnhTO5JBEHl5x5HbEJ6xfN5lci1Gw7Mntshs/DVCumI/Gv/ixCs6Vrb/taPWx5wzQdnDLGJ9mOPuUQ=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+    integrity="sha512-SzlrxWUlpfuzQ+pcUCosxcglQRNAq/DZjVsC0lE0x1J9a9pcP5Vo0New+0PwQvlaXaVUearIOBhiXZ5V3ynxwA==" crossorigin="anonymous"
+    referrerpolicy="no-referrer" />
   <style>
     :root {
-      --bg: #04060b;
-      --panel: #0c101a;
-      --panel-strong: #0f1523;
-      --border: rgba(255,255,255,0.08);
-      --text: #f6f7fb;
-      --muted: #9aa3b5;
-      --accent: #7fd8f2;
-      --accent-2: #a28bff;
-      --shadow: 0 25px 60px rgba(0,0,0,0.45);
-      --radius: 14px;
+      --bg-app: radial-gradient(circle at 20% 20%, rgba(63, 94, 251, 0.1), transparent 35%),
+        radial-gradient(circle at 80% 10%, rgba(124, 58, 237, 0.15), transparent 28%), #0f1116;
+      --bg-panel: rgba(22, 25, 32, 0.72);
+      --bg-active: rgba(13, 15, 22, 0.9);
+      --text-primary: #e9ecf2;
+      --text-dim: #9aa3b5;
+      --accent: #7c5dfa;
+      --border: rgba(255, 255, 255, 0.08);
+      --error: #f48771;
+      --shadow-elevate: 0 18px 40px rgba(0, 0, 0, 0.4);
+      --frost: blur(16px);
     }
 
-    * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
     body {
-      margin: 0;
-      font-family: "Inter", system-ui, -apple-system, sans-serif;
-      background: radial-gradient(circle at 20% 20%, rgba(127, 216, 242, 0.08), transparent 25%),
-                  radial-gradient(circle at 80% 10%, rgba(162, 139, 255, 0.08), transparent 20%),
-                  linear-gradient(135deg, #04060b 0%, #0a0f19 100%);
-      color: var(--text);
-      min-height: 100vh;
-      line-height: 1.6;
-      padding: 18px;
+      font-family: "Inter", "Segoe UI", "San Francisco", sans-serif;
+      background: var(--bg-app);
+      color: var(--text-primary);
+      height: 100vh;
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+      background-attachment: fixed;
+    }
+
+    body.dragging #app-shell {
+      outline: 1px dashed var(--accent);
+      outline-offset: -6px;
+    }
+
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg-app);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--bg-panel);
+      border-radius: 4px;
+    }
+
+    #toast-container {
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 200;
+    }
+
+    .toast {
+      min-width: 220px;
+      max-width: 320px;
+      padding: 10px 12px;
+      border-radius: 6px;
+      color: #fff;
+      font-size: 12px;
+      box-shadow: var(--shadow-elevate);
+      animation: slideIn 0.2s ease, fadeOut 0.3s ease 3.2s forwards;
+      border: 1px solid var(--border);
+    }
+
+    .toast.info { background: rgba(0, 122, 204, 0.8); }
+    .toast.success { background: rgba(16, 185, 129, 0.85); }
+    .toast.error { background: rgba(244, 135, 113, 0.9); }
+
+    @keyframes slideIn {
+      from { transform: translateY(10px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    #app-shell {
+      display: grid;
+      grid-template-rows: 35px 1fr 22px;
+      height: 100vh;
+      overflow: hidden;
     }
 
     header {
-      background: linear-gradient(90deg, rgba(127, 216, 242, 0.12), rgba(162, 139, 255, 0.16));
-      border: 1px solid var(--border);
-      box-shadow: var(--shadow);
-      border-radius: var(--radius);
-      padding: 14px 18px;
-      display: grid;
-      grid-template-columns: auto 1fr auto;
-      gap: 18px;
-      align-items: center;
-    }
-
-    .brand {
+      background: linear-gradient(90deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0));
+      border-bottom: 1px solid var(--border);
       display: flex;
-      align-items: center;
-      gap: 12px;
-      font-weight: 800;
-      letter-spacing: 1.2px;
-      text-transform: uppercase;
-      color: #0f1523;
-      background: #f6f7fb;
-      padding: 10px 14px;
-      border-radius: 12px;
-      box-shadow: 0 12px 30px rgba(0,0,0,0.35);
-    }
-
-    .brand span { color: #6b4bff; }
-
-    .toolbar-actions {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-    }
-
-    .pill-btn {
-      background: rgba(255,255,255,0.06);
-      border: 1px solid var(--border);
-      color: var(--text);
-      padding: 10px 14px;
-      border-radius: 999px;
-      cursor: pointer;
-      display: inline-flex;
       align-items: center;
       gap: 8px;
-      transition: transform 0.15s, border-color 0.2s, background 0.2s;
-      font-weight: 600;
+      padding: 0 14px;
+      font-size: 13px;
+      backdrop-filter: var(--frost);
     }
 
-    .pill-btn:hover { transform: translateY(-1px); border-color: rgba(127,216,242,0.5); background: rgba(127,216,242,0.08); }
-
-    .primary { background: linear-gradient(120deg, #7fd8f2, #a28bff); color: #0c101a; border-color: transparent; }
-
-    .chips { display: flex; gap: 6px; flex-wrap: wrap; }
-    .chip { padding: 8px 12px; border-radius: 12px; border: 1px solid var(--border); color: var(--muted); background: rgba(255,255,255,0.04); font-size: 13px; }
-
-    main { margin-top: 18px; display: grid; gap: 18px; }
-
-    .hero {
-      display: grid;
-      gap: 18px;
-      grid-template-columns: 1.2fr 1fr;
+    header .brand {
+      font-weight: 800;
+      color: var(--accent);
+      letter-spacing: 1.4px;
+      text-transform: uppercase;
+      font-size: 13px;
     }
 
-    .panel {
-      background: rgba(12,16,26,0.9);
+    header button,
+    .pill {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid transparent;
+      color: var(--text-primary);
+      padding: 7px 12px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s, transform 0.15s;
+      font-size: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      letter-spacing: 0.3px;
+    }
+
+    .command-palette-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.35);
+      backdrop-filter: blur(10px);
+      display: none;
+      align-items: flex-start;
+      justify-content: center;
+      padding-top: 120px;
+      z-index: 180;
+    }
+
+    .command-palette-backdrop.show { display: flex; }
+
+    .command-palette {
+      width: min(680px, 92vw);
+      background: var(--bg-panel);
       border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 18px;
-      box-shadow: var(--shadow);
+      border-radius: 12px;
+      box-shadow: var(--shadow-elevate);
+      overflow: hidden;
+      animation: fadeIn 0.15s ease;
+    }
+
+    .command-palette header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .command-palette header input {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      color: var(--text-primary);
+      outline: none;
+    }
+
+    .command-palette ul { list-style: none; max-height: 320px; overflow: auto; }
+
+    .command-palette li {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .command-palette li.active { background: rgba(255, 255, 255, 0.05); }
+
+    .command-palette li span.meta { color: var(--text-dim); font-size: 12px; }
+
+    header button i { color: var(--accent); }
+
+    header button:hover,
+    .pill:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.12);
+      transform: translateY(-1px);
+    }
+
+    .json-tree {
+      font-family: "JetBrains Mono", monospace;
+      padding: 10px;
+      overflow: auto;
+      height: 100%;
+    }
+
+    .json-tree ul {
+      list-style: none;
+      margin-left: 14px;
+      padding-left: 10px;
+      border-left: 1px dashed var(--border);
+    }
+
+    .json-node {
+      cursor: default;
+      line-height: 1.6;
+    }
+
+    .json-node .toggle {
+      display: inline-block;
+      width: 12px;
+      color: var(--accent);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .json-node .key { color: #9cdcfe; }
+    .json-node .value { color: #ce9178; }
+    .json-node .type { color: var(--text-dim); }
+    .json-node .editable { border-bottom: 1px dashed var(--border); }
+    .collapsed > ul { display: none; }
+
+    .pdf-toolbar {
+      position: sticky;
+      top: 10px;
+      margin: 0 auto 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      max-width: 960px;
+      background: radial-gradient(circle at 20% 20%, rgba(124, 93, 250, 0.15), rgba(124, 93, 250, 0))
+        , rgba(19, 21, 29, 0.78);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(14px) saturate(140%);
+      z-index: 8;
+    }
+
+    .pdf-toolbar .toolbar-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 8px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+
+    .pdf-toolbar button {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      color: var(--text-primary);
+      padding: 8px 10px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .pdf-toolbar button:hover {
+      background: rgba(124, 93, 250, 0.16);
+      border-color: rgba(124, 93, 250, 0.5);
+      transform: translateY(-1px);
+    }
+
+    .pdf-toolbar button.active {
+      background: linear-gradient(135deg, rgba(124, 93, 250, 0.28), rgba(255, 255, 255, 0.08));
+      border-color: rgba(124, 93, 250, 0.7);
+      box-shadow: 0 10px 30px rgba(124, 93, 250, 0.4);
+    }
+
+    .pdf-toolbar .context-controls input,
+    .pdf-toolbar .context-controls select {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--text-primary);
+      border-radius: 8px;
+      padding: 6px 8px;
+      min-width: 64px;
+    }
+
+    .pdf-toolbar .context-controls input[type='range'] {
+      accent-color: var(--accent);
+    }
+
+    .pdf-toolbar .context-controls.disabled {
+      opacity: 0.45;
+      pointer-events: none;
+    }
+
+    .pdf-page {
+      position: relative;
+      margin: 12px auto;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.35);
+      background: #111;
+    }
+
+    .annotation-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 5;
+      pointer-events: auto;
+    }
+
+    .pdf-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 10;
+      cursor: default;
+      pointer-events: auto;
+    }
+
+    .pdf-organizer-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 10px;
+    }
+
+    .pdf-organizer-grid canvas {
+      width: 100%;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+      border: 1px solid var(--border);
+      background: #0f0f0f;
+    }
+
+    .image-toolbar {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      display: flex;
+      gap: 8px;
+      z-index: 6;
+      background: rgba(0, 0, 0, 0.55);
+      padding: 6px 8px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+
+    .visual-diff {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      height: 70vh;
+    }
+
+    .diff-pane {
+      background: #111;
+      border: 1px solid var(--border);
+      padding: 8px;
+      overflow: auto;
+      font-family: "JetBrains Mono", monospace;
+      white-space: pre-wrap;
+    }
+
+    .diff-line.added { background: rgba(0, 100, 0, 0.35); }
+    .diff-line.removed { background: rgba(100, 0, 0, 0.35); }
+    .diff-line.neutral { color: var(--text-dim); }
+
+    main {
+      display: grid;
+      grid-template-rows: 36px 1fr;
+      overflow: hidden;
+    }
+
+    .tab-bar {
+      display: flex;
+      align-items: stretch;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0));
+      border-bottom: 1px solid var(--border);
+      padding-left: 8px;
       position: relative;
       overflow: hidden;
     }
 
-    .panel::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(circle at 70% 0%, rgba(127, 216, 242, 0.08), transparent 30%);
-      pointer-events: none;
+    .tabs-container {
+      display: flex;
+      gap: 6px;
+      flex: 1 1 auto;
+      overflow: hidden;
+      align-items: center;
     }
 
-    .hero .panel h2 { margin: 0 0 6px; font-size: 24px; }
-    .muted { color: var(--muted); }
+    .tab {
+      position: relative;
+      padding: 10px 30px 9px 14px;
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text-dim);
+      border: 1px solid var(--border);
+      border-bottom: none;
+      border-radius: 12px 12px 0 0;
+      min-width: 120px;
+      max-width: 220px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s, transform 0.15s;
+      letter-spacing: 0.2px;
+    }
 
-    .actions-grid {
+    .tab.active {
+      background: linear-gradient(180deg, rgba(124, 93, 250, 0.15), rgba(255, 255, 255, 0.02));
+      color: var(--text-primary);
+      border-top: 2px solid var(--accent);
+      padding-top: 9px;
+      transform: translateY(1px);
+    }
+
+    .tab:hover .close {
+      opacity: 1;
+    }
+
+    .tab .dirty-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #e6b400;
+      display: inline-block;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+
+    .tab .close {
+      position: absolute;
+      right: 8px;
+      top: 8px;
+      opacity: 0;
+      transition: opacity 0.2s;
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+
+    .tab.active .close {
+      opacity: 1;
+      color: var(--text-primary);
+    }
+
+    .tab-overflow {
+      width: 32px;
+      text-align: center;
+      cursor: pointer;
+      font-weight: bold;
+      border-left: 1px solid var(--border);
+      background: rgba(0,0,0,0.2);
+    }
+
+    .tab-overflow-menu {
+      position: absolute;
+      right: 8px;
+      top: 32px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-elevate);
+      min-width: 180px;
+      z-index: 40;
+    }
+
+    .tab-overflow-menu button {
+      width: 100%;
+      text-align: left;
+      padding: 8px 12px;
+      background: transparent;
+      border: none;
+      color: var(--text-primary);
+      cursor: pointer;
+    }
+
+    .tab-overflow-menu button:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .workspace {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 12px;
+      grid-template-columns: 240px 1fr;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    .sidebar {
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0));
+      border-right: 1px solid var(--border);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      overflow-y: auto;
+      backdrop-filter: var(--frost);
+    }
+
+    .sidebar section h4 {
+      color: var(--text-dim);
+      margin-bottom: 8px;
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .sidebar .file-item {
+      padding: 8px 10px;
+      border: 1px solid transparent;
+      border-radius: 10px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      transition: background 0.2s, transform 0.15s, padding-left 0.15s;
+      gap: 8px;
+    }
+
+    .sidebar .file-item:hover {
+      border-color: var(--border);
+      background: rgba(255, 255, 255, 0.06);
+      transform: translateX(2px);
+      padding-left: 12px;
+    }
+
+    .content-region {
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.03), rgba(0, 0, 0, 0.35));
+      backdrop-filter: var(--frost);
+    }
+
+    .content-scroll {
+      height: 100%;
+      overflow: auto;
+      padding: 16px 18px;
+    }
+
+    .content-scroll.hidden { display: none; }
+
+    .statusbar {
+      background: var(--bg-panel);
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 10px;
+      gap: 10px;
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+
+    .statusbar .detail {
+      margin-left: auto;
+      color: var(--text-primary);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .statusbar .meta {
+      color: var(--text-dim);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .statusbar .spinner {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      animation: spin 0.8s linear infinite;
+      display: none;
+    }
+
+    .statusbar .spinner.active {
+      display: inline-block;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      backdrop-filter: blur(2px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .modal {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      min-width: 360px;
+      max-width: 640px;
+      box-shadow: var(--shadow-elevate);
+    }
+
+    .modal header {
+      background: transparent;
+      border: none;
+      padding: 0 0 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
       margin-top: 14px;
+      background: transparent;
+      border: none;
+      padding: 0;
+    }
+
+    .welcome-screen {
+      position: absolute;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      color: var(--text-primary);
+      background: radial-gradient(circle at 10% 20%, rgba(124, 93, 250, 0.08), transparent 35%),
+        radial-gradient(circle at 90% 10%, rgba(0, 219, 222, 0.08), transparent 30%),
+        rgba(8, 10, 18, 0.65);
+      backdrop-filter: blur(30px);
+      animation: fadeIn 0.35s ease;
+    }
+
+    .welcome-card {
+      max-width: 900px;
+      width: 100%;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 28px;
+      box-shadow: var(--shadow-elevate);
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 24px;
+    }
+
+    .welcome-hero {
+      display: grid;
+      gap: 14px;
+    }
+
+    .welcome-logo {
+      width: 64px;
+      height: 64px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, rgba(124, 93, 250, 0.5), rgba(0, 219, 222, 0.3));
+      display: grid;
+      place-items: center;
+      font-size: 26px;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+    }
+
+    .welcome-title {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: 1.2px;
+    }
+
+    .welcome-subtitle { color: var(--text-dim); }
+
+    .quick-actions {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-top: 10px;
     }
 
     .action-card {
-      background: var(--panel-strong);
+      background: rgba(255, 255, 255, 0.04);
       border: 1px solid var(--border);
       border-radius: 14px;
       padding: 14px;
       display: grid;
-      gap: 8px;
+      gap: 6px;
       cursor: pointer;
-      transition: transform 0.15s, border-color 0.2s, background 0.2s;
-      position: relative;
+      transition: transform 0.15s, box-shadow 0.2s, border-color 0.2s;
+    }
+
+    .action-card i { color: var(--accent); }
+
+    .action-card:hover {
+      transform: translateY(-3px);
+      border-color: rgba(124, 93, 250, 0.5);
+      box-shadow: 0 14px 24px rgba(0, 0, 0, 0.35);
+    }
+
+    .recents-panel {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+      display: grid;
+      gap: 8px;
+      box-shadow: var(--shadow-elevate);
+    }
+
+    .recent-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px;
+      border-radius: 12px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s, transform 0.15s;
+    }
+
+    .recent-item:hover {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: var(--border);
+      transform: translateX(3px);
+    }
+
+    .recent-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      background: rgba(124, 93, 250, 0.15);
+      color: var(--accent);
+    }
+
+    .drag-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(14px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 150;
+      color: #fff;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .drag-overlay .dropzone {
+      display: grid;
+      place-items: center;
+      gap: 12px;
+      text-align: center;
+      padding: 28px 32px;
+      border: 2px dashed rgba(255, 255, 255, 0.5);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.04);
+      box-shadow: var(--shadow-elevate);
+    }
+
+    .drag-overlay i { font-size: 42px; color: #7fe3ff; }
+
+    body.dragging .drag-overlay { display: flex; }
+
+    .context-menu {
+      position: fixed;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-elevate);
+      display: none;
+      flex-direction: column;
+      min-width: 200px;
+      z-index: 90;
+    }
+
+    .context-menu button {
+      background: transparent;
+      border: none;
+      color: var(--text-primary);
+      padding: 8px 12px;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .context-menu button:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .editor-toolbar button.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: rgba(255, 255, 255, 0.18);
+      box-shadow: 0 6px 20px rgba(124, 93, 250, 0.4);
+    }
+
+    .split-view {
+      display: flex;
+      height: 100%;
       overflow: hidden;
     }
 
-    .action-card:hover { transform: translateY(-2px); border-color: rgba(162,139,255,0.5); background: rgba(162,139,255,0.08); }
-    .action-card i { color: #a8ffef; font-size: 18px; }
-    .tag { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
-
-    .templates-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 12px;
-      margin-top: 14px;
-    }
-
-    .template-card {
-      background: rgba(255,255,255,0.03);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 12px;
-      display: grid;
-      gap: 6px;
-      cursor: pointer;
-      transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
-    }
-
-    .template-card:hover { border-color: rgba(127,216,242,0.6); transform: translateY(-2px); box-shadow: var(--shadow); }
-    .template-card .title { font-weight: 700; }
-    .template-card .meta { color: var(--muted); font-size: 13px; }
-
-    .workspace {
-      display: grid;
-      grid-template-columns: 0.9fr 1.1fr 1.1fr;
-      gap: 14px;
-    }
-
-    .stack { display: grid; gap: 10px; }
-    .subtitle { margin: 0; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: var(--muted); font-size: 12px; }
-    .list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
-    .list li { padding: 10px 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 12px; }
-
-    .doc-editor {
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      background: linear-gradient(145deg, #0b1021 0%, #0c0f1a 40%, #0f1323 100%);
-      box-shadow: var(--shadow);
-      padding: 16px;
-      display: grid;
-      gap: 10px;
-    }
-
-    .doc-editor header {
-      background: rgba(255,255,255,0.02);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 10px 12px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
-    }
-
-    .doc-editor header button {
-      background: rgba(255,255,255,0.05);
-      border: 1px solid var(--border);
-      color: var(--text);
-      border-radius: 10px;
-      padding: 8px 10px;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      transition: background 0.2s, transform 0.15s, border-color 0.2s;
-      font-weight: 600;
-    }
-
-    .doc-editor header button:hover { background: rgba(127,216,242,0.12); border-color: rgba(127,216,242,0.6); transform: translateY(-1px); }
-
-    #doc-area {
-      min-height: 320px;
-      border: 1px dashed var(--border);
-      border-radius: 12px;
-      padding: 14px;
-      background: rgba(255,255,255,0.02);
+    .split-pane {
+      flex: 1 1 auto;
       overflow: auto;
     }
 
-    #doc-area[contenteditable="true"]:focus { outline: 2px solid rgba(162, 139, 255, 0.5); }
-
-    .doc-footer { display: flex; justify-content: space-between; color: var(--muted); font-size: 13px; }
-
-    .code-lab {
-      background: linear-gradient(180deg, rgba(12,20,36,0.92), rgba(12,20,36,0.82));
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      box-shadow: var(--shadow);
-      padding: 14px;
-      display: grid;
-      gap: 10px;
+    .split-resizer {
+      width: 6px;
+      cursor: col-resize;
+      background: var(--border);
     }
 
-    .code-lab textarea {
-      width: 100%;
-      min-height: 240px;
-      background: #0a0f19;
-      color: #d2f1ff;
+    .mobile-toggle {
+      position: absolute;
+      bottom: 12px;
+      right: 12px;
+      padding: 10px 12px;
+      border-radius: 50%;
       border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 12px;
-      font-family: "JetBrains Mono", monospace;
-      font-size: 14px;
-      resize: vertical;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+      background: var(--bg-panel);
+      color: var(--text-primary);
+      box-shadow: var(--shadow-elevate);
+      cursor: pointer;
+      display: none;
+      z-index: 6;
     }
 
-    .assist-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-    .assist-pill { background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 999px; padding: 8px 10px; font-size: 13px; color: var(--muted); display: inline-flex; gap: 6px; }
+    .csv-container {
+      overflow: auto;
+      max-height: 100%;
+    }
 
-    .suggestions { display: grid; gap: 8px; }
-    .suggestion { padding: 10px; background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 10px; cursor: pointer; transition: border-color 0.2s, transform 0.15s; }
-    .suggestion:hover { border-color: rgba(127,216,242,0.6); transform: translateY(-1px); }
-    .suggestion strong { display: block; }
-    .warning { color: #ffb37f; }
-    .success { color: #8af0c9; }
+    .json-tree ul { list-style: none; padding-left: 16px; }
+    .json-tree li { margin: 2px 0; cursor: pointer; }
+    .json-tree .collapsed > ul { display: none; }
 
-    .lint-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-    .lint-item { padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border); background: rgba(255,255,255,0.03); font-size: 13px; display: flex; gap: 8px; align-items: center; }
+    .hidden { display: none !important; }
 
-    footer { margin-top: 12px; text-align: center; color: var(--muted); font-size: 13px; }
-    .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; background: #8af0c9; }
+    @media (max-width: 768px) {
+      .split-view {
+        position: relative;
+        flex-direction: column;
+      }
+      .split-view .split-resizer { display: none; }
+      .split-view .split-pane.preview-pane { display: none; }
+      .split-view.show-preview .split-pane.preview-pane { display: block; }
+      .split-view.show-preview .split-pane.editor-pane { display: none; }
+      .mobile-toggle { display: block; }
+    }
 
-    @media (max-width: 1100px) {
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @media (max-width: 900px) {
       .workspace { grid-template-columns: 1fr; }
-      .hero { grid-template-columns: 1fr; }
-      header { grid-template-columns: 1fr; justify-items: center; text-align: center; }
-      .toolbar-actions { justify-content: center; }
+      .sidebar { display: none; }
     }
   </style>
 </head>
 <body>
-  <header>
-    <div class="brand">Atelier <span>Documentos</span></div>
-    <div class="chips">
-      <div class="chip"><i class="fa-regular fa-circle-check"></i> Auto guardado</div>
-      <div class="chip"><i class="fa-regular fa-lightbulb"></i> Sugerencias contextuales</div>
-      <div class="chip"><i class="fa-solid fa-bolt"></i> Plantillas instantáneas</div>
+  <div id="app-shell">
+    <header>
+      <span class="brand">Universal DocViewer</span>
+      <button id="open-file"><i class="fa-solid fa-folder-open"></i> Abrir</button>
+      <button id="global-search"><i class="fa-solid fa-magnifying-glass"></i> Buscar</button>
+      <button id="compare-files"><i class="fa-solid fa-code-compare"></i> Comparar</button>
+      <button id="export-btn"><i class="fa-solid fa-file-export"></i> Exportar</button>
+      <button id="settings-btn"><i class="fa-solid fa-gear"></i> Ajustes</button>
+      <button id="help-btn"><i class="fa-regular fa-circle-question"></i></button>
+      <button id="fullscreen-btn" title="Pantalla completa"><i class="fa-solid fa-expand"></i></button>
+      <span class="pill" id="session-info">Sesión lista</span>
+    </header>
+    <main>
+      <div class="tab-bar">
+        <div class="tabs-container" id="tabs"></div>
+        <div class="tab-overflow" id="overflow-trigger">…</div>
+        <div class="tab-overflow-menu hidden" id="overflow-menu"></div>
+      </div>
+      <div class="workspace">
+        <aside class="sidebar" id="sidebar">
+          <section>
+            <h4>Archivos recientes</h4>
+            <div id="recent-list"></div>
+          </section>
+          <section>
+            <h4>Pestañas abiertas</h4>
+            <div id="open-list"></div>
+          </section>
+          <section>
+            <h4>Controles</h4>
+            <button id="panic-btn" class="pill" style="border-color: var(--error); color: var(--error);">Botón del Pánico</button>
+          </section>
+        </aside>
+        <section class="content-region" id="content-region">
+          <div class="welcome-screen" id="welcome-screen">
+            <div class="welcome-card">
+              <div class="welcome-hero">
+                <div class="welcome-logo"><i class="fa-solid fa-clover"></i></div>
+                <div>
+                  <div class="welcome-title">Universal DocViewer</div>
+                  <div class="welcome-subtitle">Arrastra archivos aquí o selecciona una opción para comenzar.</div>
+                </div>
+                <div class="quick-actions">
+                  <div class="action-card" id="quick-open">
+                    <strong><i class="fa-solid fa-folder-open"></i> Abrir Archivo Local</strong>
+                    <small style="color: var(--text-dim);">Selecciona uno o varios archivos desde tu equipo.</small>
+                  </div>
+                  <div class="action-card" id="quick-draft">
+                    <strong><i class="fa-solid fa-pen-nib"></i> Nuevo Borrador</strong>
+                    <small style="color: var(--text-dim);">Crea una pestaña en blanco para notas rápidas.</small>
+                  </div>
+                  <div class="action-card" id="quick-settings">
+                    <strong><i class="fa-solid fa-gear"></i> Ajustes</strong>
+                    <small style="color: var(--text-dim);">Configura la app y tu API Key de conversión.</small>
+                  </div>
+                </div>
+              </div>
+              <div class="recents-panel">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                  <strong>Recientes</strong>
+                  <span style="color: var(--text-dim); font-size: 12px;">Últimos 5 documentos</span>
+                </div>
+                <div id="welcome-recents"></div>
+              </div>
+            </div>
+          </div>
+          <div class="content-scroll" id="content-scroll"></div>
+        </section>
+      </div>
+    </main>
+    <footer class="statusbar">
+      <div class="spinner" id="loader"></div>
+      <span id="status-text">Listo</span>
+      <span id="zoom-indicator">Zoom 100%</span>
+      <span id="status-meta" class="meta"></span>
+      <span id="status-detail" class="detail"></span>
+    </footer>
+  </div>
+
+  <div class="modal-backdrop" id="modal-backdrop">
+    <div class="modal" role="dialog" aria-modal="true">
+      <header><h3 id="modal-title">Modal</h3><button id="modal-close">✕</button></header>
+      <div id="modal-body"></div>
+      <footer id="modal-actions"></footer>
     </div>
-    <div class="toolbar-actions">
-      <button class="pill-btn" id="btn-import"><i class="fa-solid fa-file-import"></i> Importar archivo</button>
-      <button class="pill-btn primary" id="btn-start"><i class="fa-solid fa-wand-magic-sparkles"></i> Nueva sesión</button>
+  </div>
+
+  <div class="context-menu" id="context-menu"></div>
+  <div id="toast-container"></div>
+  <div class="drag-overlay" id="drag-overlay">
+    <div class="dropzone">
+      <i class="fa-solid fa-cloud-arrow-down"></i>
+      <div style="font-weight:700; letter-spacing: 1px;">Suelta los archivos aquí</div>
+      <div style="color: var(--text-dim);">Soporta PDF, Markdown, DOCX, imágenes y más</div>
     </div>
-  </header>
+  </div>
 
-  <main>
-    <section class="hero">
-      <div class="panel">
-        <h2>Menú de inicio</h2>
-        <p class="muted">Crea documentos desde cero o parte de una plantilla. Todo está organizado para que escribir y prototipar código sea más intuitivo.</p>
-        <div class="actions-grid">
-          <div class="action-card" data-action="blank">
-            <div class="tag"><i class="fa-solid fa-file"></i> Documento en blanco</div>
-            <strong>Escribir desde cero</strong>
-            <span class="muted">Área limpia con estilo editorial listo para personalizar.</span>
-          </div>
-          <div class="action-card" data-action="template">
-            <div class="tag"><i class="fa-solid fa-shapes"></i> Galería</div>
-            <strong>Explorar plantillas</strong>
-            <span class="muted">Formatos curados para informes, cartas y guías técnicas.</span>
-          </div>
-          <div class="action-card" data-action="code">
-            <div class="tag"><i class="fa-solid fa-code"></i> Modo código</div>
-            <strong>Atajos inteligentes</strong>
-            <span class="muted">Autocompletado, bloques reutilizables y detector de errores inmediato.</span>
-          </div>
-          <div class="action-card" data-action="recent">
-            <div class="tag"><i class="fa-regular fa-clock"></i> Recientes</div>
-            <strong>Volver al último</strong>
-            <span class="muted">Recupera tu última sesión con un clic.</span>
-          </div>
-        </div>
-      </div>
-      <div class="panel">
-        <h2>Plantillas destacadas</h2>
-        <p class="muted">Elige un formato base. Puedes mezclar y reorganizar las secciones con el planificador.</p>
-        <div class="templates-grid" id="templates"></div>
-      </div>
-    </section>
+  <div class="command-palette-backdrop" id="command-palette-backdrop">
+    <div class="command-palette">
+      <header>
+        <i class="fa-solid fa-terminal" style="color: var(--accent);"></i>
+        <input id="command-input" type="text" placeholder="Escribe un comando o acción... (Ctrl + K)" autocomplete="off" />
+      </header>
+      <ul id="command-list"></ul>
+    </div>
+  </div>
 
-    <section class="workspace">
-      <div class="panel stack">
-        <p class="subtitle">Planificador</p>
-        <p class="muted">Define la estructura y supervisa el estado de tu documento.</p>
-        <ul class="list" id="outline-list"></ul>
-        <div class="list">
-          <div class="lint-item"><span class="status-dot"></span> Guardado en vivo activado</div>
-          <div class="lint-item"><i class="fa-solid fa-bolt"></i> Sugerencias contextuales mientras escribes</div>
-          <div class="lint-item"><i class="fa-solid fa-shield-halved"></i> Detección rápida de errores de sintaxis</div>
-        </div>
-      </div>
+  <input type="file" id="file-input" class="hidden" multiple />
 
-      <div class="doc-editor">
-        <header>
-          <button data-format="bold"><i class="fa-solid fa-bold"></i> Negrita</button>
-          <button data-format="italic"><i class="fa-solid fa-italic"></i> Cursiva</button>
-          <button data-format="insertUnorderedList"><i class="fa-solid fa-list-ul"></i> Lista</button>
-          <button id="btn-template"><i class="fa-solid fa-layer-group"></i> Aplicar plantilla</button>
-          <button id="btn-clean"><i class="fa-solid fa-eraser"></i> Limpiar</button>
-        </header>
-        <div id="doc-area" contenteditable="true"></div>
-        <div class="doc-footer">
-          <span id="status">Sesión lista</span>
-          <span id="counter">0 caracteres</span>
-        </div>
-      </div>
+  <script type="module">
+    const CONFIG_KEY = 'app_config';
+    const SESSION_KEY = 'session_index';
 
-      <div class="code-lab">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <div>
-            <p class="subtitle" style="margin:0;">Laboratorio de código</p>
-            <small class="muted">Escribe lógica, recibe autocompletado y alertas de errores.</small>
-          </div>
-          <div class="assist-bar">
-            <span class="assist-pill"><i class="fa-solid fa-wand-magic-sparkles"></i> Snippets</span>
-            <span class="assist-pill"><i class="fa-solid fa-bug"></i> Linter en vivo</span>
-          </div>
-        </div>
-        <textarea id="code-area" placeholder="function nuevaCaracteristica() {\n  // Tu idea aquí\n}"></textarea>
-        <div class="suggestions" id="suggestions"></div>
-        <ul class="lint-list" id="lint"></ul>
-      </div>
-    </section>
-  </main>
-
-  <footer>Diseñado para escribir mejor, más rápido. Mantén el flujo creativo mientras el asistente cuida los detalles.</footer>
-
-  <input type="file" id="file-input" accept=".txt,.md,.docx,.json" style="display:none" />
-
-  <script>
-    const templates = [
-      {
-        title: 'Informe ejecutivo',
-        type: 'Negocio',
-        summary: 'Resultados, riesgos y próximos pasos en un vistazo.',
-        content: `# Informe Ejecutivo\n\n## Resumen\nDescribe los hallazgos principales y su impacto.\n\n## Métricas clave\n- Indicador 1\n- Indicador 2\n\n## Riesgos\n- Riesgo y plan de mitigación.\n\n## Próximos pasos\n- Acción inmediata\n- Responsable y fecha.`,
-        outline: ['Resumen', 'Métricas', 'Riesgos', 'Próximos pasos']
-      },
-      {
-        title: 'Carta formal',
-        type: 'Comunicación',
-        summary: 'Saludo, motivo, petición y despedida clara.',
-        content: `Ciudad, Fecha\n\nEstimado/a [Nombre]:\n\nExpón el motivo de tu carta con claridad.\n\nAgradece la atención y ofrece un canal de respuesta.\n\nAtentamente,\n[Tu nombre]`,
-        outline: ['Encabezado', 'Motivo', 'Cierre']
-      },
-      {
-        title: 'Nota técnica',
-        type: 'Ingeniería',
-        summary: 'Contexto, arquitectura y decisiones tomadas.',
-        content: `# Nota técnica\n\n## Contexto\nPor qué existe esta solución.\n\n## Arquitectura\n- Componentes principales\n- Dependencias clave\n\n## Decisiones\n- Decisión tomada (fecha)\n- Alternativa descartada y motivo`,
-        outline: ['Contexto', 'Arquitectura', 'Decisiones']
-      },
-      {
-        title: 'Propuesta creativa',
-        type: 'Diseño',
-        summary: 'Objetivo, idea fuerza y plan de lanzamiento.',
-        content: `# Propuesta creativa\n\n## Objetivo\nDefine el impacto buscado.\n\n## Idea fuerza\nQué hace única a esta propuesta.\n\n## Plan de lanzamiento\n- Audiencia\n- Mensaje principal\n- Canales y tiempos`,
-        outline: ['Objetivo', 'Idea fuerza', 'Plan de lanzamiento']
+    class PluginLoader {
+      constructor() {
+        this.cache = new Map();
+        this.sources = {
+          pdfjs: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
+          pdflib: 'https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js',
+          monaco: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.52.0/min/vs/loader.min.js',
+          marked: 'https://cdnjs.cloudflare.com/ajax/libs/marked/11.2.0/marked.min.js',
+          dompurify: 'https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.5/purify.min.js',
+          mermaid: 'https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js',
+          papaparse: 'https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js',
+          mammoth: 'https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.8.0/mammoth.browser.min.js',
+          sheetjs: 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
+          jsdiff: 'https://cdnjs.cloudflare.com/ajax/libs/diff/5.2.0/diff.min.js',
+          pyodide: 'https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js',
+          prettier: 'https://unpkg.com/prettier@3.0.3/standalone.js',
+          prettierBabel: 'https://unpkg.com/prettier@3.0.3/parser-babel.js',
+          prettierPostcss: 'https://unpkg.com/prettier@3.0.3/parser-postcss.js',
+          katex: 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js'
+        };
       }
-    ];
+      static get instance() {
+        if (!window.__pluginLoader) window.__pluginLoader = new PluginLoader();
+        return window.__pluginLoader;
+      }
+      async load(name) {
+        if (this.cache.has(name)) return this.cache.get(name);
+        const src = this.sources[name];
+        if (!src) throw new Error('Plugin no registrado: ' + name);
+        UIManager.setLoading(true, `Cargando ${name}...`);
+        const promise = new Promise((resolve, reject) => {
+          const s = document.createElement('script');
+          s.src = src;
+          s.onload = () => { UIManager.setLoading(false); resolve(true); };
+          s.onerror = (e) => { UIManager.setLoading(false); reject(e); };
+          document.head.appendChild(s);
+        });
+        this.cache.set(name, promise);
+        return promise;
+      }
+    }
 
-    const suggestions = [
-      { label: 'función utilitaria', snippet: 'function util(nombre) {\n  console.log(`Listo ${nombre}`);\n}\n', description: 'Plantilla base para funciones reutilizables.' },
-      { label: 'hook asíncrono', snippet: 'async function cargarDatos(url) {\n  const res = await fetch(url);\n  if (!res.ok) throw new Error("Error de red");\n  return res.json();\n}\n', description: 'Manejo de errores y fetch en una sola rutina.' },
-      { label: 'componente UI', snippet: 'const Boton = ({ texto, onClick }) => {\n  return `<button class=\"btn\" onclick=\\\"${onClick}\\\">${texto}</button>`;\n};\n', description: 'Esqueleto de componente rápido para prototipos.' },
-      { label: 'prueba rápida', snippet: 'function assert(cond, mensaje) {\n  if(!cond) throw new Error(mensaje || "Fallo en la prueba");\n}\n', description: 'Valida supuestos sin depender de frameworks.' }
-    ];
+    class FileSystem {
+      constructor() {
+        this.dbName = 'DocViewerDB_v1';
+        this.storeName = 'files';
+        this.dbPromise = null;
+      }
 
-    const outlineList = document.getElementById('outline-list');
-    const docArea = document.getElementById('doc-area');
-    const counter = document.getElementById('counter');
-    const status = document.getElementById('status');
-    const templatesGrid = document.getElementById('templates');
-    const codeArea = document.getElementById('code-area');
-    const suggestionsBox = document.getElementById('suggestions');
-    const lintList = document.getElementById('lint');
-    const fileInput = document.getElementById('file-input');
+      async init() {
+        if (this.dbPromise) return this.dbPromise;
+        this.dbPromise = new Promise((resolve, reject) => {
+          const request = indexedDB.open(this.dbName, 1);
+          request.onupgradeneeded = () => {
+            const db = request.result;
+            if (!db.objectStoreNames.contains(this.storeName)) {
+              const store = db.createObjectStore(this.storeName, { keyPath: 'id' });
+              store.createIndex('byName', 'name', { unique: false });
+            }
+          };
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        });
+        return this.dbPromise;
+      }
 
-    let activeTemplate = null;
+      async putFile(file) {
+        const db = await this.init();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(this.storeName, 'readwrite');
+          tx.oncomplete = () => resolve(file);
+          tx.onerror = () => reject(tx.error);
+          tx.objectStore(this.storeName).put(file);
+        });
+      }
 
-    function renderTemplates() {
-      templatesGrid.innerHTML = '';
-      templates.forEach((tpl, idx) => {
-        const card = document.createElement('div');
-        card.className = 'template-card';
-        card.innerHTML = `
-          <div class="title">${tpl.title}</div>
-          <div class="meta">${tpl.type}</div>
-          <div class="muted">${tpl.summary}</div>
-        `;
-        card.addEventListener('click', () => applyTemplate(idx));
-        templatesGrid.appendChild(card);
+      async getFile(id) {
+        const db = await this.init();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(this.storeName, 'readonly');
+          const req = tx.objectStore(this.storeName).get(id);
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+      }
+
+      async deleteFile(id) {
+        const db = await this.init();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(this.storeName, 'readwrite');
+          tx.oncomplete = () => resolve(true);
+          tx.onerror = () => reject(tx.error);
+          tx.objectStore(this.storeName).delete(id);
+        });
+      }
+
+      async listFiles() {
+        const db = await this.init();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(this.storeName, 'readonly');
+          const req = tx.objectStore(this.storeName).getAll();
+          req.onsuccess = () => resolve(req.result || []);
+          req.onerror = () => reject(req.error);
+        });
+      }
+    }
+
+    class UIManager {
+      static contextTargetId = null;
+      static setup() {
+        this.tabsEl = document.getElementById('tabs');
+        this.overflowMenu = document.getElementById('overflow-menu');
+        this.overflowTrigger = document.getElementById('overflow-trigger');
+        this.contentScroll = document.getElementById('content-scroll');
+        this.recentList = document.getElementById('recent-list');
+        this.openList = document.getElementById('open-list');
+        this.modalBackdrop = document.getElementById('modal-backdrop');
+        this.modalBody = document.getElementById('modal-body');
+        this.modalActions = document.getElementById('modal-actions');
+        this.modalTitle = document.getElementById('modal-title');
+        this.statusText = document.getElementById('status-text');
+        this.loader = document.getElementById('loader');
+        this.contextMenu = document.getElementById('context-menu');
+        this.zoomIndicator = document.getElementById('zoom-indicator');
+        this.statusMeta = document.getElementById('status-meta');
+        this.statusDetail = document.getElementById('status-detail');
+        this.toastContainer = document.getElementById('toast-container');
+        this.welcomeScreen = document.getElementById('welcome-screen');
+        this.welcomeRecents = document.getElementById('welcome-recents');
+        this.commandBackdrop = document.getElementById('command-palette-backdrop');
+        this.commandInput = document.getElementById('command-input');
+        this.commandList = document.getElementById('command-list');
+        this.filteredCommands = [];
+        this.selectedCommandIndex = 0;
+        this.attachListeners();
+      }
+
+      static attachListeners() {
+        document.getElementById('modal-close').onclick = () => this.hideModal();
+        this.overflowTrigger.onclick = () => this.toggleOverflowMenu();
+        document.addEventListener('click', (e) => {
+          if (!this.overflowMenu.contains(e.target) && !this.overflowTrigger.contains(e.target)) {
+            this.overflowMenu.classList.add('hidden');
+          }
+          if (!this.contextMenu.contains(e.target)) this.contextMenu.style.display = 'none';
+        });
+        this.commandBackdrop.addEventListener('click', (e) => { if (e.target === this.commandBackdrop) this.hideCommandPalette(); });
+        this.commandInput.addEventListener('input', () => this.renderCommandList());
+        document.addEventListener('keydown', (e) => {
+          if (!this.isPaletteOpen()) return;
+          if (['ArrowDown', 'ArrowUp', 'Enter', 'Escape'].includes(e.key)) e.preventDefault();
+          if (e.key === 'ArrowDown') this.moveCommandSelection(1);
+          if (e.key === 'ArrowUp') this.moveCommandSelection(-1);
+          if (e.key === 'Enter') this.executeSelectedCommand();
+          if (e.key === 'Escape') this.hideCommandPalette();
+        });
+        document.addEventListener('contextmenu', (e) => {
+          if (e.defaultPrevented) return;
+          e.preventDefault();
+          UIManager.contextTargetId = App.instance.activeTabId;
+          this.showContextMenu(e.clientX, e.clientY);
+        });
+        window.addEventListener('resize', () => {
+          this.renderTabs(App.instance.openTabs);
+          if (window.monaco && EditorFactory.editors) {
+            EditorFactory.editors.forEach(ed => ed.layout());
+          }
+        });
+      }
+
+      static isPaletteOpen() { return this.commandBackdrop.classList.contains('show'); }
+
+      static showCommandPalette(commands = []) {
+        this.commandActions = commands;
+        this.commandInput.value = '';
+        this.commandBackdrop.classList.add('show');
+        this.commandInput.focus();
+        this.renderCommandList();
+      }
+
+      static hideCommandPalette() {
+        this.commandBackdrop.classList.remove('show');
+      }
+
+      static renderCommandList() {
+        const query = this.commandInput.value?.toLowerCase() || '';
+        this.filteredCommands = (this.commandActions || []).filter(c =>
+          c.label.toLowerCase().includes(query) || (c.keywords || '').toLowerCase().includes(query)
+        );
+        if (!this.filteredCommands.length) this.selectedCommandIndex = 0; else this.selectedCommandIndex = Math.min(this.selectedCommandIndex, this.filteredCommands.length - 1);
+        this.commandList.innerHTML = '';
+        this.filteredCommands.forEach((cmd, idx) => {
+          const li = document.createElement('li');
+          li.className = idx === this.selectedCommandIndex ? 'active' : '';
+          li.innerHTML = `<span>${cmd.label}</span><span class="meta">${cmd.meta || ''}</span>`;
+          li.onclick = () => { this.selectedCommandIndex = idx; this.executeSelectedCommand(); };
+          this.commandList.appendChild(li);
+        });
+      }
+
+      static moveCommandSelection(delta) {
+        if (!this.filteredCommands.length) return;
+        this.selectedCommandIndex = (this.selectedCommandIndex + delta + this.filteredCommands.length) % this.filteredCommands.length;
+        this.renderCommandList();
+      }
+
+      static executeSelectedCommand() {
+        const cmd = this.filteredCommands[this.selectedCommandIndex];
+        if (!cmd) return;
+        try { cmd.action?.(); } catch (err) { UIManager.showToast('Error ejecutando comando: ' + err, 'error'); }
+        this.hideCommandPalette();
+      }
+
+      static setLoading(state, text = 'Cargando...') {
+        this.loader.classList.toggle('active', state);
+        this.statusText.textContent = state ? text : 'Listo';
+      }
+
+      static setZoom(percent) {
+        this.zoomIndicator.textContent = `Zoom ${percent}%`;
+      }
+
+      static updateStatusDetail(text = '') {
+        this.statusDetail.textContent = text;
+      }
+
+      static updateStatusMeta(text = '') {
+        this.statusMeta.textContent = text;
+      }
+
+      static renderTabs(tabs) {
+        this.tabsEl.innerHTML = '';
+        const maxTabs = Math.floor((this.tabsEl.clientWidth || window.innerWidth) / 140) - 1;
+        const visibleTabs = tabs.slice(0, Math.max(maxTabs, 1));
+        const overflow = tabs.slice(Math.max(maxTabs, 1));
+        visibleTabs.forEach(tab => this.tabsEl.appendChild(this.createTabEl(tab)));
+        this.overflowMenu.innerHTML = '';
+        overflow.forEach(tab => {
+          const btn = document.createElement('button');
+          btn.textContent = tab.isDirty ? `* ${tab.name}` : tab.name;
+          btn.onclick = () => App.instance.activateTab(tab.id);
+          this.overflowMenu.appendChild(btn);
+        });
+      }
+
+      static createTabEl(tab) {
+        const el = document.createElement('div');
+        el.className = 'tab' + (tab.id === App.instance.activeTabId ? ' active' : '');
+        el.dataset.id = tab.id;
+        el.innerHTML = `${tab.isDirty ? '<span class="dirty-dot"></span>' : ''}${tab.name}<span class="close">✕</span>`;
+        el.onclick = () => App.instance.activateTab(tab.id);
+        el.oncontextmenu = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          UIManager.contextTargetId = tab.id;
+          UIManager.showContextMenu(e.clientX, e.clientY);
+        };
+        el.querySelector('.close').onclick = (ev) => { ev.stopPropagation(); App.instance.closeTab(tab.id); };
+        return el;
+      }
+
+      static updateFullscreenButton(isFull) {
+        const btn = document.getElementById('fullscreen-btn');
+        if (!btn) return;
+        const icon = btn.querySelector('i');
+        if (!icon) return;
+        icon.classList.toggle('fa-expand', !isFull);
+        icon.classList.toggle('fa-compress', isFull);
+        btn.title = isFull ? 'Salir de pantalla completa' : 'Pantalla completa';
+      }
+
+      static toggleOverflowMenu() {
+        this.overflowMenu.classList.toggle('hidden');
+      }
+
+    static updateSidebar(files, openTabs) {
+      this.recentList.innerHTML = '';
+      const sorted = [...files].sort((a, b) => (b.lastModified || 0) - (a.lastModified || 0));
+      sorted.slice(0, 10).forEach(f => {
+        const item = document.createElement('div');
+        item.className = 'file-item';
+        const icon = document.createElement('i');
+        icon.className = `fa-solid ${this.iconForType(f.type)}`;
+        icon.style.color = 'var(--accent)';
+        const label = document.createElement('span');
+        label.textContent = f.name;
+        item.append(icon, label);
+        item.onclick = () => App.instance.openFromDB(f.id);
+        this.recentList.append(item);
       });
+      this.openList.innerHTML = '';
+      openTabs.forEach(f => {
+        const item = document.createElement('div');
+        item.className = 'file-item';
+        const icon = document.createElement('i');
+        icon.className = `fa-solid ${this.iconForType(f.type)}`;
+        icon.style.color = f.isDirty ? '#e6b400' : 'var(--accent)';
+        const label = document.createElement('span');
+        label.textContent = f.name;
+        item.append(icon, label);
+        item.onclick = () => App.instance.activateTab(f.id);
+        this.openList.appendChild(item);
+      });
+      this.renderWelcomeRecents(sorted);
+      this.toggleWelcome(!openTabs.length);
     }
 
-    function applyTemplate(index) {
-      const tpl = templates[index];
-      activeTemplate = tpl;
-      docArea.innerText = tpl.content;
-      updateOutline(tpl.outline);
-      updateStatus(`Plantilla "${tpl.title}" aplicada.`);
-      docArea.focus();
+    static iconForType(type = '') {
+      if (type.includes('pdf')) return 'fa-file-pdf';
+      if (type.includes('word') || type.includes('doc')) return 'fa-file-word';
+      if (type.includes('sheet') || type.includes('excel') || type.includes('spreadsheet')) return 'fa-file-excel';
+      if (type.includes('image')) return 'fa-image';
+      if (type.includes('audio')) return 'fa-file-audio';
+      if (type.includes('video')) return 'fa-file-video';
+      if (type.includes('markdown') || type.includes('md')) return 'fa-file-lines';
+      return 'fa-file';
     }
 
-    function updateOutline(items = []) {
-      outlineList.innerHTML = '';
-      if (!items.length) {
-        outlineList.innerHTML = '<li>Sin secciones definidas. Usa el planificador para añadir ideas clave.</li>';
+    static renderWelcomeRecents(files = []) {
+      if (!this.welcomeRecents) return;
+      this.welcomeRecents.innerHTML = '';
+      const recent = files.slice(0, 5);
+      if (!recent.length) {
+        const empty = document.createElement('div');
+        empty.textContent = 'Sin historial aún. ¡Sube tu primer archivo!';
+        empty.style.color = 'var(--text-dim)';
+        this.welcomeRecents.append(empty);
         return;
       }
-      items.forEach(item => {
-        const li = document.createElement('li');
-        li.textContent = item;
-        outlineList.appendChild(li);
+      recent.forEach(f => {
+        const item = document.createElement('div');
+        item.className = 'recent-item';
+        const icon = document.createElement('div');
+        icon.className = 'recent-icon';
+        const iconInner = document.createElement('i');
+        iconInner.className = `fa-solid ${this.iconForType(f.type)}`;
+        icon.append(iconInner);
+        const info = document.createElement('div');
+        info.style.display = 'grid';
+        info.style.gap = '2px';
+        const name = document.createElement('div');
+        name.textContent = f.name;
+        const meta = document.createElement('small');
+        meta.style.color = 'var(--text-dim)';
+        meta.textContent = App.instance.describeFile(f);
+        info.append(name, meta);
+        item.append(icon, info);
+        item.onclick = () => App.instance.openFromDB(f.id);
+        this.welcomeRecents.append(item);
       });
     }
 
-    function updateStatus(message) {
-      status.textContent = message;
-      status.style.color = '#8af0c9';
-      setTimeout(() => { status.style.color = 'var(--muted)'; }, 1200);
+    static toggleWelcome(show) {
+      if (!this.welcomeScreen) return;
+      this.welcomeScreen.style.display = show ? 'flex' : 'none';
+      this.contentScroll.classList.toggle('hidden', show);
     }
 
-    function updateCounter() {
-      const length = docArea.innerText.trim().length;
-      counter.textContent = `${length} caracteres`;
+    static setContent(node) {
+      this.contentScroll.innerHTML = '';
+      this.contentScroll.appendChild(node);
+      this.toggleWelcome(false);
     }
 
-    function bindFormatting() {
-      document.querySelectorAll('[data-format]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          document.execCommand(btn.dataset.format, false, null);
-          docArea.focus();
-          updateCounter();
+      static showModal(title, bodyNode, actions = []) {
+        this.modalTitle.textContent = title;
+        this.modalBody.innerHTML = '';
+        this.modalBody.appendChild(bodyNode);
+        this.modalActions.innerHTML = '';
+        actions.forEach(({ text, variant = 'default', onClick }) => {
+          const btn = document.createElement('button');
+          btn.textContent = text;
+          if (variant === 'danger') {
+            btn.style.color = 'var(--error)';
+            btn.style.borderColor = 'var(--error)';
+          }
+          btn.onclick = onClick;
+          this.modalActions.appendChild(btn);
         });
-      });
-    }
+        this.modalBackdrop.style.display = 'flex';
+      }
 
-    function handleActions() {
-      document.querySelectorAll('.action-card').forEach(card => {
-        card.addEventListener('click', () => {
-          const action = card.dataset.action;
-          if (action === 'blank') resetDocument();
-          if (action === 'template') templatesGrid.scrollIntoView({ behavior: 'smooth' });
-          if (action === 'code') codeArea.focus();
-          if (action === 'recent') loadRecent();
+      static hideModal() { this.modalBackdrop.style.display = 'none'; }
+
+      static showInput(title, placeholder = '', initialValue = '') {
+        return new Promise((resolve) => {
+          const wrapper = document.createElement('div');
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.placeholder = placeholder;
+          input.value = initialValue;
+          input.style.width = '100%';
+          input.style.padding = '8px';
+          input.style.marginTop = '8px';
+          wrapper.appendChild(input);
+          const submit = () => { const val = input.value.trim(); this.hideModal(); resolve(val || null); };
+          input.onkeydown = (e) => { if (e.key === 'Enter') submit(); };
+          this.showModal(title, wrapper, [
+            { text: 'Cancelar', onClick: () => { this.hideModal(); resolve(null); } },
+            { text: 'Aceptar', onClick: submit }
+          ]);
+          setTimeout(() => input.focus(), 10);
         });
-      });
-      document.getElementById('btn-clean').addEventListener('click', resetDocument);
-      document.getElementById('btn-template').addEventListener('click', () => applyTemplate(0));
-      document.getElementById('btn-import').addEventListener('click', () => fileInput.click());
-      document.getElementById('btn-start').addEventListener('click', resetDocument);
-    }
+      }
 
-    function resetDocument() {
-      activeTemplate = null;
-      docArea.innerHTML = '<h2>Título del documento</h2><p>Empieza a escribir tu contenido o aplica una plantilla.</p>';
-      updateOutline([]);
-      updateStatus('Documento en blanco preparado.');
-      updateCounter();
-      saveSession();
-    }
+      static showConfirm(title, message) {
+        return new Promise((resolve) => {
+          const body = document.createElement('div');
+          body.textContent = message;
+          this.showModal(title, body, [
+            { text: 'Cancelar', onClick: () => { this.hideModal(); resolve(false); } },
+            { text: 'Confirmar', onClick: () => { this.hideModal(); resolve(true); } }
+          ]);
+        });
+      }
 
-    function loadRecent() {
-      const saved = localStorage.getItem('atelier-doc');
-      if (saved) {
-        const payload = JSON.parse(saved);
-        docArea.innerHTML = payload.content;
-        updateOutline(payload.outline || []);
-        updateStatus('Sesión recuperada.');
-        updateCounter();
-      } else {
-        updateStatus('No hay sesiones previas.');
+      static showContextMenu(x, y) {
+        const menu = this.contextMenu;
+        menu.innerHTML = '';
+        const targetId = UIManager.contextTargetId || App.instance.activeTabId;
+        [
+          { label: 'Cerrar pestaña', action: () => App.instance.closeTab(targetId) },
+          { label: 'Cerrar otras', action: () => App.instance.closeOthers(targetId) },
+          { label: 'Descargar', action: () => App.instance.exportFile(targetId) },
+          { label: 'Duplicar', action: () => App.instance.duplicateTab(targetId) },
+          { label: 'Renombrar', action: () => App.instance.renameTab(targetId) },
+          { label: 'Propiedades', action: () => App.instance.showProps(targetId) }
+        ].forEach(item => {
+          const btn = document.createElement('button');
+          btn.textContent = item.label;
+          btn.onclick = () => { item.action(); menu.style.display = 'none'; UIManager.contextTargetId = null; };
+          menu.appendChild(btn);
+        });
+        menu.style.left = `${x}px`;
+        menu.style.top = `${y}px`;
+        menu.style.display = 'flex';
+      }
+
+      static showToast(message, type = 'info') {
+        if (!this.toastContainer) return;
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.textContent = message;
+        toast.onclick = () => toast.remove();
+        this.toastContainer.appendChild(toast);
+        setTimeout(() => toast.remove(), 3500);
       }
     }
 
-    function saveSession() {
-      const data = {
-        content: docArea.innerHTML,
-        outline: [...outlineList.children].map(li => li.textContent)
-      };
-      localStorage.setItem('atelier-doc', JSON.stringify(data));
-    }
+    class EditorFactory {
+      static async createViewer(fileMeta) {
+        const ext = (fileMeta.name.split('.').pop() || '').toLowerCase();
+        if (['md', 'markdown'].includes(ext)) return this.createMarkdownView(fileMeta);
+        if (['json'].includes(ext)) return this.createJsonView(fileMeta);
+        if (['js','ts','css','html','java','py'].includes(ext)) return this.createCodeView(fileMeta);
+        if (['pdf'].includes(ext)) return this.createPdfView(fileMeta);
+        if (['csv'].includes(ext)) return this.createCsvView(fileMeta);
+        if (['xls','xlsx','xlsm'].includes(ext)) return this.createExcelView(fileMeta);
+        if (['doc','docx'].includes(ext)) return this.createWordView(fileMeta);
+        if (['png','jpg','jpeg','gif','webp','svg'].includes(ext)) return this.createImageView(fileMeta);
+        return this.createHexView(fileMeta);
+      }
 
-    function initDocArea() {
-      docArea.addEventListener('input', () => {
-        updateCounter();
-        saveSession();
-      });
-    }
+      static editors = new Set();
 
-    function handleFileImport() {
-      fileInput.addEventListener('change', e => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-          docArea.innerText = ev.target.result;
-          updateOutline([]);
-          updateStatus(`Importado: ${file.name}`);
-          updateCounter();
-          saveSession();
+      static async createJsonView(fileMeta) {
+        await PluginLoader.instance.load('monaco');
+        const container = document.createElement('div');
+        container.className = 'split-view';
+        container.style.position = 'relative';
+        const left = document.createElement('div');
+        left.className = 'split-pane editor-pane';
+        const right = document.createElement('div');
+        right.className = 'split-pane preview-pane';
+        right.style.overflow = 'auto';
+        const resizer = document.createElement('div');
+        resizer.className = 'split-resizer';
+        const toggle = document.createElement('button');
+        toggle.className = 'mobile-toggle';
+        toggle.textContent = '👁️';
+        toggle.title = 'Alternar árbol';
+        toggle.onclick = () => {
+          container.classList.toggle('show-preview');
+          toggle.textContent = container.classList.contains('show-preview') ? '✏️' : '👁️';
         };
-        reader.readAsText(file);
-      });
-    }
 
-    function renderSuggestions(prefix = '') {
-      suggestionsBox.innerHTML = '';
-      const filtered = suggestions.filter(s => s.label.toLowerCase().includes(prefix.toLowerCase()));
-      filtered.forEach(s => {
-        const card = document.createElement('div');
-        card.className = 'suggestion';
-        card.innerHTML = `<strong>${s.label}</strong><span class="muted">${s.description}</span>`;
-        card.addEventListener('click', () => {
-          insertSnippet(s.snippet);
+        const editorHost = document.createElement('div');
+        editorHost.style.height = '100%';
+        const treeContainer = document.createElement('div');
+        treeContainer.className = 'json-tree';
+        right.appendChild(treeContainer);
+        left.appendChild(editorHost);
+        container.append(left, resizer, right, toggle);
+
+        const monacoEditor = monaco.editor.create(editorHost, {
+          value: fileMeta.blob ? await fileMeta.blob.text() : '{}',
+          language: 'json',
+          theme: App.instance.config.theme === 'dark' ? 'vs-dark' : 'vs',
+          automaticLayout: true,
+          minimap: { enabled: false },
+          fontFamily: 'JetBrains Mono, Consolas, monospace',
+          fontSize: 14,
+          mouseWheelZoom: true
         });
-        suggestionsBox.appendChild(card);
-      });
-      if (!filtered.length) {
-        suggestionsBox.innerHTML = '<div class="muted">Sin sugerencias para este contexto.</div>';
+        EditorFactory.editors.add(monacoEditor);
+
+        let dragging = false;
+        resizer.addEventListener('mousedown', () => dragging = true);
+        window.addEventListener('mouseup', () => dragging = false);
+        window.addEventListener('mousemove', (e) => {
+          if (!dragging) return;
+          const pct = e.clientX / container.clientWidth;
+          left.style.flex = pct;
+          right.style.flex = 1 - pct;
+        });
+
+        const assign = (obj, path, val) => {
+          if (!path.length) return val;
+          const [p, ...rest] = path;
+          const clone = Array.isArray(obj) ? [...obj] : { ...obj };
+          const key = Array.isArray(obj) ? Number(p) : p;
+          clone[key] = assign(clone[key], rest, val);
+          return clone;
+        };
+
+        const renderNode = (key, value, path = []) => {
+          const node = document.createElement('li');
+          node.className = 'json-node';
+          node.dataset.path = path.join('.');
+          const toggleEl = document.createElement('span');
+          toggleEl.className = 'toggle';
+          const keySpan = document.createElement('span');
+          keySpan.className = 'key';
+          keySpan.textContent = key !== null ? `${key}: ` : '';
+          const valueSpan = document.createElement('span');
+          valueSpan.className = 'value';
+          const typeSpan = document.createElement('span');
+          typeSpan.className = 'type';
+
+          const wrapper = document.createElement('div');
+          wrapper.append(toggleEl, keySpan);
+
+          if (typeof value === 'object' && value !== null) {
+            toggleEl.textContent = '▾';
+            const childList = document.createElement('ul');
+            const isArray = Array.isArray(value);
+            typeSpan.textContent = isArray ? '[ ]' : '{ }';
+            wrapper.append(typeSpan);
+            Object.entries(value).forEach(([k, v]) => childList.appendChild(renderNode(k, v, [...path, k])));
+            node.append(wrapper, childList);
+            toggleEl.onclick = () => {
+              node.classList.toggle('collapsed');
+              toggleEl.textContent = node.classList.contains('collapsed') ? '▸' : '▾';
+            };
+          } else {
+            toggleEl.textContent = '';
+            valueSpan.textContent = value;
+            valueSpan.contentEditable = true;
+            valueSpan.classList.add('editable');
+            valueSpan.ondblclick = () => document.execCommand('selectAll', false, null);
+            valueSpan.onblur = () => {
+              const newVal = valueSpan.textContent;
+              const parsed = isNaN(Number(newVal)) ? newVal : Number(newVal);
+              const currentData = parseEditorValue();
+              if (!currentData) return;
+              const updated = assign(currentData, path, parsed);
+              const jsonText = JSON.stringify(updated, null, 2);
+              monacoEditor.setValue(jsonText);
+              fileMeta.blob = new Blob([jsonText], { type: 'application/json' });
+              App.instance.markDirty(fileMeta.id, true);
+              buildTree(updated);
+            };
+            wrapper.append(valueSpan);
+            node.append(wrapper);
+          }
+          return node;
+        };
+
+        const parseEditorValue = () => {
+          const value = monacoEditor.getValue();
+          try {
+            return JSON.parse(value);
+          } catch (err) {
+            treeContainer.innerHTML = `<div style="color: var(--error); padding: 8px;">JSON inválido: ${err.message}</div>`;
+            return null;
+          }
+        };
+
+        const buildTree = (obj) => {
+          treeContainer.innerHTML = '';
+          if (!obj) return;
+          const root = document.createElement('ul');
+          Object.entries(obj).forEach(([k, v]) => {
+            const li = renderNode(k, v, [k]);
+            root.appendChild(li);
+          });
+          treeContainer.appendChild(root);
+        };
+
+        const syncBlob = () => {
+          const value = monacoEditor.getValue();
+          fileMeta.blob = new Blob([value], { type: 'application/json' });
+          App.instance.markDirty(fileMeta.id, true);
+        };
+
+        const updateTreeFromEditor = () => {
+          const parsed = parseEditorValue();
+          if (parsed) {
+            buildTree(parsed);
+            syncBlob();
+          }
+        };
+
+        let debounceTimer = null;
+        monacoEditor.onDidChangeModelContent(() => {
+          clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(updateTreeFromEditor, 250);
+        });
+        monacoEditor.onDidBlurEditorText(updateTreeFromEditor);
+
+        updateTreeFromEditor();
+        return container;
+      }
+
+      static async createMarkdownView(fileMeta) {
+        await PluginLoader.instance.load('marked');
+        await PluginLoader.instance.load('dompurify');
+        try { await PluginLoader.instance.load('mermaid'); } catch (err) { console.warn('Mermaid no disponible', err); }
+        try {
+          await PluginLoader.instance.load('katex');
+          if (!document.getElementById('katex-css')) {
+            const link = document.createElement('link');
+            link.id = 'katex-css';
+            link.rel = 'stylesheet';
+            link.href = 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css';
+            document.head.appendChild(link);
+          }
+        } catch (err) { console.warn('KaTeX no disponible', err); }
+        const container = document.createElement('div');
+        container.className = 'split-view';
+        container.style.position = 'relative';
+        const left = document.createElement('div');
+        left.className = 'split-pane editor-pane';
+        const right = document.createElement('div');
+        right.className = 'split-pane preview-pane';
+        const resizer = document.createElement('div');
+        resizer.className = 'split-resizer';
+        const textarea = document.createElement('textarea');
+        textarea.style.width = '100%';
+        textarea.style.height = '100%';
+        textarea.style.background = '#111';
+        textarea.style.color = 'var(--text-primary)';
+        textarea.style.border = 'none';
+        textarea.style.fontFamily = 'Fira Code, JetBrains Mono, Consolas, monospace';
+        textarea.style.fontVariantLigatures = 'common-ligatures';
+        const preview = document.createElement('div');
+        preview.style.padding = '12px';
+        preview.style.overflow = 'auto';
+        right.appendChild(preview);
+        left.appendChild(textarea);
+        container.append(left, resizer, right);
+        const toggle = document.createElement('button');
+        toggle.className = 'mobile-toggle';
+        toggle.textContent = '👁️';
+        toggle.title = 'Alternar vista previa';
+        toggle.onclick = () => {
+          container.classList.toggle('show-preview');
+          toggle.textContent = container.classList.contains('show-preview') ? '✏️' : '👁️';
+        };
+        container.appendChild(toggle);
+        const updatePreview = () => {
+          const html = marked.parse(textarea.value);
+          preview.innerHTML = DOMPurify.sanitize(html);
+          if (window.mermaid) {
+            try {
+              mermaid.initialize({ startOnLoad: false, theme: 'dark' });
+              mermaid.run({ nodes: preview.querySelectorAll('.language-mermaid') });
+            } catch (err) { console.warn('Mermaid render error', err); }
+          }
+          if (window.katex) {
+            try {
+              preview.querySelectorAll('code.language-math, pre.language-math').forEach(block => {
+                const formula = block.textContent;
+                const span = document.createElement('div');
+                span.className = 'katex-render';
+                span.innerHTML = katex.renderToString(formula, { throwOnError: false, displayMode: true });
+                block.replaceWith(span);
+              });
+            } catch (err) { console.warn('KaTeX render error', err); }
+          }
+          App.instance.markDirty(fileMeta.id, true);
+        };
+        textarea.addEventListener('input', updatePreview);
+        textarea.addEventListener('scroll', () => {
+          const pct = textarea.scrollTop / Math.max(1, textarea.scrollHeight - textarea.clientHeight);
+          preview.scrollTop = pct * Math.max(0, preview.scrollHeight - preview.clientHeight);
+        });
+        let dragging = false;
+        resizer.addEventListener('mousedown', () => dragging = true);
+        window.addEventListener('mouseup', () => dragging = false);
+        window.addEventListener('mousemove', (e) => {
+          if (!dragging) return;
+          const pct = e.clientX / container.clientWidth;
+          left.style.flex = pct;
+          right.style.flex = 1 - pct;
+        });
+        const blob = fileMeta.blob;
+        if (blob) {
+          const text = await blob.text();
+          textarea.value = text;
+          updatePreview();
+        }
+        return container;
+      }
+
+      static async createCodeView(fileMeta) {
+        await PluginLoader.instance.load('monaco');
+        const container = document.createElement('div');
+        container.style.height = '100%';
+        const editorHost = document.createElement('div');
+        editorHost.style.height = '60%';
+        const consoleHost = document.createElement('div');
+        consoleHost.style.height = '40%';
+        consoleHost.style.background = '#111';
+        consoleHost.style.borderTop = '1px solid var(--border)';
+        consoleHost.style.padding = '8px';
+        consoleHost.style.overflow = 'auto';
+        const toolbar = document.createElement('div');
+        toolbar.className = 'editor-toolbar';
+        toolbar.style.display = 'flex';
+        toolbar.style.gap = '8px';
+        toolbar.style.padding = '8px';
+        toolbar.style.borderBottom = '1px solid var(--border)';
+        const formatBtn = document.createElement('button');
+        formatBtn.textContent = 'Formato';
+        const wrapBtn = document.createElement('button');
+        wrapBtn.innerHTML = '<i class="fa-solid fa-align-left"></i> Wrap';
+        const runBtn = document.createElement('button');
+        runBtn.textContent = 'Run';
+        toolbar.append(formatBtn, wrapBtn, runBtn);
+        container.append(toolbar, editorHost, consoleHost);
+
+        const pagination = document.createElement('div');
+        pagination.style.display = 'flex';
+        pagination.style.alignItems = 'center';
+        pagination.style.gap = '8px';
+        pagination.style.padding = '6px 8px';
+        pagination.style.borderTop = '1px solid var(--border)';
+        pagination.style.fontSize = '12px';
+        const prevBtn = document.createElement('button');
+        prevBtn.textContent = 'Página Anterior';
+        const nextBtn = document.createElement('button');
+        nextBtn.textContent = 'Página Siguiente';
+        const pageLabel = document.createElement('span');
+        pageLabel.textContent = '';
+        pagination.append(prevBtn, nextBtn, pageLabel);
+        container.append(pagination);
+
+        const chunkSize = 50 * 1024;
+        const isLarge = fileMeta.blob && fileMeta.blob.size > 5 * 1024 * 1024;
+        const totalChunks = fileMeta.blob ? Math.max(1, Math.ceil(fileMeta.blob.size / chunkSize)) : 1;
+        let currentChunk = 0;
+        let editor;
+        let isWrapped = false;
+
+        // Monaco bootstrap
+        require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.52.0/min/vs' } });
+        require(['vs/editor/editor.main'], async () => {
+          const initialText = !isLarge && fileMeta.blob ? await fileMeta.blob.text() : '';
+          editor = monaco.editor.create(editorHost, {
+            value: initialText,
+            language: EditorFactory.mapLanguage(fileMeta.name),
+            theme: 'vs-dark',
+            minimap: { enabled: false },
+            wordWrap: 'off',
+            fontLigatures: true,
+            automaticLayout: true,
+            mouseWheelZoom: true
+          });
+          EditorFactory.editors.add(editor);
+          const loadChunk = async (index) => {
+            if (!fileMeta.blob) return;
+            currentChunk = Math.min(Math.max(index, 0), totalChunks - 1);
+            const start = currentChunk * chunkSize;
+            const end = Math.min(start + chunkSize, fileMeta.blob.size);
+            const slice = await fileMeta.blob.slice(start, end).text();
+            editor.setValue(slice);
+            pageLabel.textContent = `Página ${currentChunk + 1} / ${totalChunks}`;
+            prevBtn.disabled = currentChunk === 0;
+            nextBtn.disabled = currentChunk >= totalChunks - 1;
+          };
+
+          if (isLarge) {
+            pagination.style.display = 'flex';
+            await loadChunk(0);
+          } else {
+            pagination.style.display = 'none';
+            pageLabel.textContent = '';
+          }
+
+          prevBtn.onclick = () => loadChunk(currentChunk - 1);
+          nextBtn.onclick = () => loadChunk(currentChunk + 1);
+          runBtn.onclick = () => EditorFactory.runCode(editor.getValue(), fileMeta.name, consoleHost);
+          wrapBtn.onclick = () => {
+            isWrapped = !isWrapped;
+            editor.updateOptions({ wordWrap: isWrapped ? 'on' : 'off' });
+            wrapBtn.classList.toggle('active', isWrapped);
+          };
+          formatBtn.onclick = async () => {
+            try {
+              await PluginLoader.instance.load('prettier');
+              const parser = EditorFactory.mapPrettierParser(fileMeta.name);
+              const plugin = parser === 'css' || parser === 'scss' ? 'prettierPostcss' : 'prettierBabel';
+              await PluginLoader.instance.load(plugin);
+              const formatted = prettier.format(editor.getValue(), {
+                parser,
+                plugins: [prettierPlugins[plugin === 'prettierBabel' ? 'babel' : 'postcss']]
+              });
+              editor.setValue(formatted);
+              App.instance.saveContent(fileMeta.id, formatted);
+              UIManager.showToast('Documento formateado con Prettier.', 'success');
+            } catch (err) {
+              UIManager.showToast('Error formateando: ' + err, 'error');
+            }
+          };
+          if (!isLarge) {
+            editor.onDidBlurEditorText(() => App.instance.saveContent(fileMeta.id, editor.getValue()));
+          }
+          const updateCursor = () => {
+            const pos = editor.getPosition();
+            if (pos) UIManager.updateStatusDetail(`Ln ${pos.lineNumber}, Col ${pos.column}`);
+          };
+          editor.onDidChangeCursorPosition(updateCursor);
+          updateCursor();
+        });
+        return container;
+      }
+
+      static mapLanguage(name) {
+        const ext = name.split('.').pop();
+        const mapping = { js: 'javascript', ts: 'typescript', css: 'css', html: 'html', json: 'json', java: 'java', py: 'python' };
+        return mapping[ext] || 'plaintext';
+      }
+
+      static mapPrettierParser(name) {
+        const ext = name.split('.').pop();
+        const mapping = { js: 'babel', ts: 'babel', json: 'json', css: 'css', scss: 'scss', html: 'html' };
+        return mapping[ext] || 'babel';
+      }
+
+      static runCode(code, name, consoleHost) {
+        consoleHost.innerHTML = '';
+        const log = (msg) => {
+          const line = document.createElement('div');
+          line.textContent = msg;
+          consoleHost.appendChild(line);
+        };
+        if (name.endsWith('.py')) {
+          PluginLoader.instance.load('pyodide').then(async () => {
+            const py = await loadPyodide();
+            const result = await py.runPythonAsync(code);
+            log(result);
+          }).catch(err => log('Error Pyodide: ' + err));
+          return;
+        }
+        if (name.endsWith('.java')) {
+          log('Ejecución deshabilitada para Java (solo lectura).');
+          return;
+        }
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        document.body.appendChild(iframe);
+        const script = document.createElement('script');
+        const logs = [];
+        iframe.contentWindow.console.log = (...args) => { logs.push(args.join(' ')); };
+        script.textContent = code;
+        iframe.contentDocument.body.appendChild(script);
+        logs.forEach(log);
+        setTimeout(() => iframe.remove(), 50);
+      }
+
+      static async createPdfView(fileMeta) {
+        await PluginLoader.instance.load('pdfjs');
+        const container = document.createElement('div');
+        container.style.height = '100%';
+        container.style.overflow = 'auto';
+        container.style.position = 'relative';
+        const toolbar = document.createElement('div');
+        toolbar.className = 'pdf-toolbar';
+        const modeGroup = document.createElement('div');
+        modeGroup.className = 'toolbar-group';
+        const styleGroup = document.createElement('div');
+        styleGroup.className = 'toolbar-group context-controls disabled';
+        const actionGroup = document.createElement('div');
+        actionGroup.className = 'toolbar-group';
+
+        const modes = [
+          { key: 'navigate', label: 'Navegar', icon: 'fa-hand' },
+          { key: 'select', label: 'Seleccionar', icon: 'fa-arrow-pointer' },
+          { key: 'draw', label: 'Dibujar', icon: 'fa-pencil' },
+          { key: 'text', label: 'Texto', icon: 'fa-font' }
+        ];
+        let currentMode = 'select';
+        let activeObject = null;
+        let activeCanvas = null;
+        let currentColor = '#ff5f6d';
+        let brushWidth = 3;
+        let fontSize = 22;
+        let fontFamily = 'Inter, sans-serif';
+
+        const modeButtons = modes.map(({ key, label, icon }) => {
+          const btn = document.createElement('button');
+          btn.innerHTML = `<i class="fa-solid ${icon}"></i> ${label}`;
+          btn.dataset.mode = key;
+          btn.onclick = () => setMode(key);
+          return btn;
+        });
+        modeButtons.forEach(btn => modeGroup.appendChild(btn));
+
+        const colorInput = document.createElement('input');
+        colorInput.type = 'color';
+        colorInput.value = currentColor;
+        colorInput.title = 'Color del trazo y texto';
+        const fontSizeInput = document.createElement('input');
+        fontSizeInput.type = 'range';
+        fontSizeInput.min = '10';
+        fontSizeInput.max = '72';
+        fontSizeInput.value = String(fontSize);
+        fontSizeInput.title = 'Tamaño de fuente';
+        const strokeWidthInput = document.createElement('input');
+        strokeWidthInput.type = 'range';
+        strokeWidthInput.min = '1';
+        strokeWidthInput.max = '16';
+        strokeWidthInput.value = String(brushWidth);
+        strokeWidthInput.title = 'Grosor del pincel';
+        const fontFamilySelect = document.createElement('select');
+        ['Inter, sans-serif', 'Roboto, sans-serif', 'Georgia, serif', 'Monaco, monospace'].forEach(f => {
+          const opt = document.createElement('option');
+          opt.value = f;
+          opt.textContent = f.split(',')[0];
+          fontFamilySelect.appendChild(opt);
+        });
+        fontFamilySelect.value = fontFamily;
+
+        const clearBtn = document.createElement('button');
+        clearBtn.innerHTML = '<i class="fa-solid fa-eraser"></i> Limpiar página';
+        const orgBtn = document.createElement('button');
+        orgBtn.innerHTML = '<i class="fa-solid fa-table-cells"></i> Organizar páginas';
+        const saveBtn = document.createElement('button');
+        saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Guardar PDF';
+        const toWordBtn = document.createElement('button');
+        toWordBtn.innerHTML = '<i class="fa-solid fa-file-word"></i> a Word';
+        const info = document.createElement('span');
+        info.textContent = 'Renderizando...';
+
+        styleGroup.append(
+          createLabeledControl('Color', colorInput),
+          createLabeledControl('Fuente', fontSizeInput),
+          createLabeledControl('Pincel', strokeWidthInput),
+          createLabeledControl('Tipografía', fontFamilySelect)
+        );
+        actionGroup.append(clearBtn, orgBtn, saveBtn, toWordBtn, info);
+        toolbar.append(modeGroup, styleGroup, actionGroup);
+        const pagesWrap = document.createElement('div');
+        container.append(toolbar, pagesWrap);
+
+        const url = URL.createObjectURL(fileMeta.blob);
+        const pdf = await pdfjsLib.getDocument(url).promise;
+        const linkService = new pdfjsLib.SimpleLinkService();
+        linkService.setDocument(pdf);
+        const pageOrder = Array.from({ length: pdf.numPages }, (_, i) => i + 1);
+        const pageNodes = new Map();
+        const pageCanvases = new Map();
+        UIManager.updateStatusDetail(`${pdf.numPages} págs`);
+
+        if (!document.getElementById('pdf-annotation-style')) {
+          const style = document.createElement('style');
+          style.id = 'pdf-annotation-style';
+          style.textContent = `
+            .annotation-layer input,
+            .annotation-layer textarea,
+            .annotation-layer select,
+            .annotation-layer button {
+              font: inherit;
+            }
+          `;
+          document.head.appendChild(style);
+        }
+
+        const updateContextControls = (object) => {
+          const enabled = !!object || currentMode !== 'navigate';
+          styleGroup.classList.toggle('disabled', !enabled);
+          [colorInput, fontSizeInput, strokeWidthInput, fontFamilySelect].forEach(el => el.disabled = !enabled);
+          const color = object?.fill || object?.stroke || currentColor;
+          colorInput.value = color;
+          fontSizeInput.value = object?.fontSize || fontSize;
+          strokeWidthInput.value = object?.strokeWidth || brushWidth;
+          fontFamilySelect.value = object?.fontFamily || fontFamily;
+        };
+
+        const markDirty = () => {
+          App.instance.markDirty(fileMeta.id, true);
+        };
+
+        const applyModeToCanvas = (canvasInstance) => {
+          canvasInstance.isDrawingMode = currentMode === 'draw';
+          canvasInstance.selection = currentMode === 'select' || currentMode === 'text';
+          canvasInstance.skipTargetFind = currentMode === 'draw' || currentMode === 'navigate';
+          canvasInstance.forEachObject(obj => { obj.selectable = currentMode !== 'draw' && currentMode !== 'navigate'; });
+          canvasInstance.upperCanvasEl.style.pointerEvents = currentMode === 'navigate' ? 'none' : 'auto';
+          if (canvasInstance.freeDrawingBrush) {
+            canvasInstance.freeDrawingBrush.color = currentColor;
+            canvasInstance.freeDrawingBrush.width = brushWidth;
+          }
+        };
+
+        const applyModeToCanvases = () => {
+          pageCanvases.forEach(applyModeToCanvas);
+        };
+
+        const handleSelection = (object, canvasInstance) => {
+          activeObject = object || null;
+          activeCanvas = canvasInstance || null;
+          updateContextControls(activeObject);
+        };
+
+        const applyStyleToTarget = () => {
+          currentColor = colorInput.value;
+          brushWidth = Number(strokeWidthInput.value);
+          fontSize = Number(fontSizeInput.value);
+          fontFamily = fontFamilySelect.value;
+          if (activeObject && activeCanvas) {
+            if ('fill' in activeObject) activeObject.set('fill', currentColor);
+            if ('stroke' in activeObject) activeObject.set('stroke', currentColor);
+            if ('strokeWidth' in activeObject) activeObject.set('strokeWidth', brushWidth);
+            if ('fontSize' in activeObject) activeObject.set('fontSize', fontSize);
+            if ('fontFamily' in activeObject) activeObject.set('fontFamily', fontFamily);
+            activeCanvas.requestRenderAll();
+            markDirty();
+          }
+          applyModeToCanvases();
+        };
+
+        [colorInput, fontSizeInput, strokeWidthInput, fontFamilySelect].forEach(ctrl => {
+          ctrl.addEventListener('input', applyStyleToTarget);
+        });
+
+        const setMode = (mode) => {
+          currentMode = mode;
+          modeButtons.forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.mode === mode);
+          });
+          applyModeToCanvases();
+          updateContextControls(activeObject);
+        };
+
+        setMode(currentMode);
+
+        const renderPage = async (pageNumber) => {
+          const wrapper = pageNodes.get(pageNumber) || document.createElement('div');
+          wrapper.className = 'pdf-page';
+          wrapper.dataset.page = pageNumber;
+          if (!pageNodes.has(pageNumber)) {
+            const canvas = document.createElement('canvas');
+            const annotationLayer = document.createElement('div');
+            annotationLayer.className = 'annotation-layer';
+            const overlay = document.createElement('canvas');
+            overlay.className = 'pdf-overlay';
+            overlay.id = `pdf-overlay-${pageNumber}`;
+            wrapper.append(canvas, annotationLayer, overlay);
+            wrapper.dataset.rendered = 'false';
+            pageNodes.set(pageNumber, wrapper);
+          }
+          const canvas = wrapper.querySelector('canvas:not(.pdf-overlay)');
+          const annotationLayer = wrapper.querySelector('.annotation-layer');
+          const overlay = wrapper.querySelector('.pdf-overlay');
+          if (wrapper.dataset.rendered === 'true') return;
+          const page = await pdf.getPage(pageNumber);
+          const viewport = page.getViewport({ scale: 1.25 });
+          canvas.height = viewport.height;
+          canvas.width = viewport.width;
+          annotationLayer.style.height = `${viewport.height}px`;
+          annotationLayer.style.width = `${viewport.width}px`;
+          overlay.height = viewport.height;
+          overlay.width = viewport.width;
+          await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+          const annotations = await page.getAnnotations({ intent: 'display' });
+          pdfjsLib.AnnotationLayer.render({
+            annotations,
+            div: annotationLayer,
+            page,
+            viewport,
+            linkService,
+            renderInteractiveForms: true,
+          });
+          wrapper.dataset.rendered = 'true';
+
+          let fabricCanvas = pageCanvases.get(pageNumber);
+          if (!fabricCanvas) {
+            fabricCanvas = new fabric.Canvas(overlay, { selection: true, preserveObjectStacking: true });
+            fabricCanvas.on('selection:created', ({ selected }) => handleSelection(selected?.[0] || null, fabricCanvas));
+            fabricCanvas.on('selection:updated', ({ selected }) => handleSelection(selected?.[0] || null, fabricCanvas));
+            fabricCanvas.on('selection:cleared', () => handleSelection(null, fabricCanvas));
+            fabricCanvas.on('object:modified', markDirty);
+            fabricCanvas.on('object:added', markDirty);
+            fabricCanvas.on('path:created', markDirty);
+            fabricCanvas.on('mouse:down', (opt) => {
+              activeCanvas = fabricCanvas;
+              if (currentMode === 'text' && !opt.target) {
+                const pointer = fabricCanvas.getPointer(opt.e);
+                const itext = new fabric.IText('Doble clic para editar', {
+                  left: pointer.x,
+                  top: pointer.y,
+                  fill: currentColor,
+                  fontSize,
+                  fontFamily,
+                  editable: true,
+                });
+                fabricCanvas.add(itext);
+                fabricCanvas.setActiveObject(itext);
+                fabricCanvas.requestRenderAll();
+                handleSelection(itext, fabricCanvas);
+                markDirty();
+              }
+            });
+            pageCanvases.set(pageNumber, fabricCanvas);
+          }
+
+          fabricCanvas.setWidth(viewport.width);
+          fabricCanvas.setHeight(viewport.height);
+          applyModeToCanvas(fabricCanvas);
+        };
+
+        const clearCurrentPage = () => {
+          const containerRect = container.getBoundingClientRect();
+          let targetPage = null;
+          let closestOffset = Infinity;
+          pageOrder.forEach(num => {
+            const node = pageNodes.get(num);
+            if (!node) return;
+            const rect = node.getBoundingClientRect();
+            if (rect.bottom < containerRect.top || rect.top > containerRect.bottom) return;
+            const offset = Math.abs(rect.top - containerRect.top);
+            if (offset < closestOffset) {
+              closestOffset = offset;
+              targetPage = num;
+            }
+          });
+          if (targetPage == null) return;
+          const overlay = pageNodes.get(targetPage).querySelector('.pdf-overlay');
+          const fabricCanvas = pageCanvases.get(targetPage);
+          if (!overlay || !fabricCanvas) return;
+          fabricCanvas.getObjects().forEach(obj => fabricCanvas.remove(obj));
+          fabricCanvas.requestRenderAll();
+          App.instance.markDirty(fileMeta.id, true);
+          UIManager.showToast(`Página ${targetPage} limpia`, 'info');
+        };
+
+        const ensurePages = () => {
+          pageOrder.forEach(num => {
+            if (!pageNodes.has(num)) {
+              const node = document.createElement('div');
+              node.className = 'pdf-page';
+              node.dataset.page = num;
+              const canvas = document.createElement('canvas');
+              const overlay = document.createElement('canvas');
+              overlay.className = 'pdf-overlay';
+              overlay.id = `pdf-overlay-${num}`;
+              node.append(canvas, overlay);
+              pageNodes.set(num, node);
+              pagesWrap.appendChild(node);
+            } else {
+              pagesWrap.appendChild(pageNodes.get(num));
+            }
+          });
+        };
+
+        ensurePages();
+        info.textContent = `${pdf.numPages} páginas`;
+
+        const renderVisible = () => {
+          const rect = container.getBoundingClientRect();
+          pageOrder.forEach(num => {
+            const node = pageNodes.get(num);
+            const nodeRect = node.getBoundingClientRect();
+            if (nodeRect.bottom > rect.top - 200 && nodeRect.top < rect.bottom + 200) {
+              renderPage(num);
+            }
+          });
+        };
+
+        container.addEventListener('scroll', renderVisible);
+        setTimeout(renderVisible, 30);
+
+        clearBtn.onclick = clearCurrentPage;
+
+        orgBtn.onclick = async () => {
+          const body = document.createElement('div');
+          const grid = document.createElement('div');
+          grid.className = 'pdf-organizer-grid';
+          body.appendChild(grid);
+          for (const num of pageOrder) {
+            const page = await pdf.getPage(num);
+            const viewport = page.getViewport({ scale: 0.3 });
+            const thumb = document.createElement('canvas');
+            thumb.draggable = true;
+            thumb.dataset.page = num;
+            thumb.height = viewport.height;
+            thumb.width = viewport.width;
+            await page.render({ canvasContext: thumb.getContext('2d'), viewport }).promise;
+            thumb.ondragstart = (e) => e.dataTransfer.setData('text/plain', num);
+            thumb.ondragover = (e) => e.preventDefault();
+          thumb.ondrop = (e) => {
+            e.preventDefault();
+            const from = Number(e.dataTransfer.getData('text/plain'));
+            const to = Number(thumb.dataset.page);
+            const fromIdx = pageOrder.indexOf(from);
+            const toIdx = pageOrder.indexOf(to);
+            pageOrder.splice(fromIdx, 1);
+            pageOrder.splice(toIdx, 0, from);
+            ensurePages();
+            renderVisible();
+            App.instance.markDirty(fileMeta.id, true);
+          };
+          grid.appendChild(thumb);
+        }
+        UIManager.showModal('Organizar páginas', body, [{ text: 'Cerrar', onClick: () => UIManager.hideModal() }]);
+        };
+
+        toWordBtn.onclick = async () => {
+          const config = App.instance.getConfig();
+          if (!config.apiKeyOfuscada) {
+            UIManager.showToast('Configura la API Key en Ajustes para convertir a Word', 'error');
+            return;
+          }
+          UIManager.setLoading(true, 'Convirtiendo...');
+          try {
+            const resp = await fetch('https://v2.convertapi.com/convert/pdf/to/docx', {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${config.apiKeyOfuscada}` },
+              body: fileMeta.blob
+            });
+            if (!resp.ok) throw new Error(`Estado ${resp.status}`);
+            const docxBlob = await resp.blob();
+            const url = URL.createObjectURL(docxBlob);
+            const a = document.createElement('a');
+            const base = fileMeta.name.replace(/\.pdf$/i, '') || 'documento';
+            a.href = url;
+            a.download = `${base}.docx`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 1500);
+            UIManager.showToast('Conversión completada', 'success');
+          } catch (err) {
+            UIManager.showToast('Error al convertir a Word: ' + err, 'error');
+          } finally {
+            UIManager.setLoading(false);
+          }
+        };
+
+        saveBtn.onclick = async () => {
+          await EditorFactory.savePdfChanges(fileMeta, pageOrder, pageCanvases);
+        };
+
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Delete' && activeCanvas && activeObject) {
+            activeCanvas.remove(activeObject);
+            activeCanvas.requestRenderAll();
+            handleSelection(null, activeCanvas);
+            markDirty();
+          }
+        });
+
+        updateContextControls(null);
+
+        return container;
+      }
+
+      static async savePdfChanges(fileMeta, pageOrder, pageCanvases) {
+        await PluginLoader.instance.load('pdflib');
+        UIManager.setLoading(true, 'Guardando PDF...');
+        try {
+          const originalBytes = await fileMeta.blob.arrayBuffer();
+          const originalDoc = await PDFLib.PDFDocument.load(originalBytes);
+          const newDoc = await PDFLib.PDFDocument.create();
+          const copyPages = await newDoc.copyPages(originalDoc, pageOrder.map(n => n - 1));
+          for (let i = 0; i < copyPages.length; i++) {
+            const page = copyPages[i];
+            const pageNumber = pageOrder[i];
+            const addedPage = newDoc.addPage(page);
+            const fabricCanvas = pageCanvases.get(pageNumber);
+            if (fabricCanvas && fabricCanvas.getObjects().length) {
+              const strokeUrl = fabricCanvas.toDataURL({ format: 'png' });
+              const pngBytes = await fetch(strokeUrl).then(r => r.arrayBuffer());
+              const pngImage = await newDoc.embedPng(pngBytes);
+              const { width, height } = addedPage.getSize();
+              addedPage.drawImage(pngImage, {
+                x: 0,
+                y: 0,
+                width,
+                height
+              });
+            }
+          }
+          const pdfBytes = await newDoc.save();
+          const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+          fileMeta.blob = blob;
+          fileMeta.lastModified = Date.now();
+          fileMeta.isDirty = false;
+          await App.instance.fs.putFile(fileMeta);
+          App.instance.persistSession();
+          UIManager.renderTabs(App.instance.openTabs);
+          UIManager.showToast('PDF guardado con anotaciones.', 'success');
+        } catch (err) {
+          UIManager.showToast('Error guardando PDF: ' + err, 'error');
+        } finally {
+          UIManager.setLoading(false);
+        }
+      }
+
+      static async createCsvView(fileMeta) {
+        await PluginLoader.instance.load('papaparse');
+        const text = fileMeta.blob ? await fileMeta.blob.text() : '';
+        const { data } = Papa.parse(text, { skipEmptyLines: true });
+        const container = document.createElement('div');
+        container.className = 'csv-container';
+        const search = document.createElement('input');
+        search.placeholder = 'Buscar...';
+        search.style.marginBottom = '8px';
+        const table = document.createElement('table');
+        table.style.width = '100%';
+        table.style.borderCollapse = 'collapse';
+        const renderRows = (rows) => {
+          table.innerHTML = '';
+          rows.forEach((row, idx) => {
+            const tr = document.createElement('tr');
+            row.forEach((cell, cIdx) => {
+              const cellEl = document.createElement(idx === 0 ? 'th' : 'td');
+              cellEl.textContent = cell;
+              cellEl.style.border = '1px solid var(--border)';
+              cellEl.style.padding = '4px';
+              if (idx === 0) cellEl.onclick = () => renderRows([row, ...rows.slice(1).sort((a, b) => (a[cIdx] > b[cIdx] ? 1 : -1))]);
+              tr.appendChild(cellEl);
+            });
+            table.appendChild(tr);
+          });
+        };
+        renderRows(data);
+        search.oninput = () => {
+          const filtered = data.filter(row => row.some(cell => String(cell).toLowerCase().includes(search.value.toLowerCase())));
+          renderRows(filtered.length ? filtered : data);
+        };
+        container.append(search, table);
+        return container;
+      }
+
+      static async createExcelView(fileMeta) {
+        await PluginLoader.instance.load('sheetjs');
+        const container = document.createElement('div');
+        try {
+          const data = new Uint8Array(await fileMeta.blob.arrayBuffer());
+          const workbook = XLSX.read(data, { type: 'array' });
+          const sheetName = workbook.SheetNames[0];
+          const html = XLSX.utils.sheet_to_html(workbook.Sheets[sheetName]);
+          container.innerHTML = `<div style="color: var(--text-dim); margin-bottom:6px;">Modo de baja fidelidad (sin API Key).</div>${html}`;
+          container.querySelectorAll('table').forEach(t => t.style.width = '100%');
+        } catch (err) {
+          container.innerHTML = `<div style="color: var(--error);">Error al procesar Excel: ${err}</div>`;
+        }
+        return container;
+      }
+
+      static async createWordView(fileMeta) {
+        const config = App.instance.getConfig();
+        const container = document.createElement('div');
+        container.innerHTML = '<div style="margin-bottom:6px; color: var(--text-dim);">Intentando conversión...</div>';
+        if (config.apiKeyOfuscada) {
+          try {
+            const resp = await fetch('https://v2.convertapi.com/convert/docx/to/pdf', {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${config.apiKeyOfuscada}` },
+              body: fileMeta.blob
+            });
+            if (resp.ok) {
+              const blob = await resp.blob();
+              const url = URL.createObjectURL(blob);
+              const iframe = document.createElement('iframe');
+              iframe.src = url;
+              iframe.style.width = '100%';
+              iframe.style.height = '80vh';
+              container.appendChild(iframe);
+              return container;
+            }
+          } catch (err) { console.warn(err); }
+        }
+        await PluginLoader.instance.load('mammoth');
+        try {
+          const arrayBuffer = await fileMeta.blob.arrayBuffer();
+          const result = await window.mammoth.convertToHtml({ arrayBuffer });
+          container.innerHTML = `<div style="color: var(--text-dim); margin-bottom:6px;">Modo de baja fidelidad (sin conexión). Configure API Key en ajustes.</div>${result.value}`;
+        } catch (err) {
+          container.innerHTML = `<div style="color: var(--error);">Documento corrupto o no soportado: ${err}</div>`;
+        }
+        return container;
+      }
+
+      static async createImageView(fileMeta) {
+        const container = document.createElement('div');
+        container.style.display = 'flex';
+        container.style.justifyContent = 'center';
+        container.style.alignItems = 'center';
+        container.style.height = '100%';
+        container.style.position = 'relative';
+        const img = document.createElement('img');
+        img.src = URL.createObjectURL(fileMeta.blob);
+        img.style.maxWidth = '100%';
+        img.style.maxHeight = '100%';
+        img.style.objectFit = 'contain';
+        img.onload = () => UIManager.updateStatusDetail(`${img.naturalWidth}x${img.naturalHeight}px`);
+        let scale = 1;
+        let translate = { x: 0, y: 0 };
+        const applyTransform = () => {
+          img.style.transform = `translate(${translate.x}px, ${translate.y}px) scale(${scale})`;
+          img.style.cursor = scale > 1 ? (isPanning ? 'grabbing' : 'grab') : 'default';
+        };
+        let isPanning = false;
+        let start = { x: 0, y: 0 };
+        img.addEventListener('mousedown', (e) => {
+          if (scale <= 1) return;
+          isPanning = true;
+          start = { x: e.clientX - translate.x, y: e.clientY - translate.y };
+          img.style.cursor = 'grabbing';
+        });
+        window.addEventListener('mouseup', () => { if (isPanning) { isPanning = false; img.style.cursor = scale > 1 ? 'grab' : 'default'; } });
+        window.addEventListener('mousemove', (e) => {
+          if (!isPanning) return;
+          translate = { x: e.clientX - start.x, y: e.clientY - start.y };
+          applyTransform();
+        });
+        const toolbar = document.createElement('div');
+        toolbar.className = 'image-toolbar';
+        ['Rotar Izq', 'Rotar Der', 'Recortar'].forEach(label => {
+          const btn = document.createElement('button');
+          btn.textContent = label;
+          btn.onclick = async () => {
+            const buffer = await fileMeta.blob.arrayBuffer();
+            const bitmap = await createImageBitmap(new Blob([buffer], { type: fileMeta.type }));
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            if (label.includes('Rotar')) {
+              const angle = label === 'Rotar Izq' ? -90 : 90;
+              const rad = angle * Math.PI / 180;
+              canvas.width = Math.abs(Math.cos(rad)) * bitmap.width + Math.abs(Math.sin(rad)) * bitmap.height;
+              canvas.height = Math.abs(Math.sin(rad)) * bitmap.width + Math.abs(Math.cos(rad)) * bitmap.height;
+              ctx.translate(canvas.width / 2, canvas.height / 2);
+              ctx.rotate(rad);
+              ctx.drawImage(bitmap, -bitmap.width / 2, -bitmap.height / 2);
+            } else {
+              const cropSize = Math.min(bitmap.width, bitmap.height) * 0.8;
+              canvas.width = cropSize;
+              canvas.height = cropSize;
+              const sx = (bitmap.width - cropSize) / 2;
+              const sy = (bitmap.height - cropSize) / 2;
+              ctx.drawImage(bitmap, sx, sy, cropSize, cropSize, 0, 0, cropSize, cropSize);
+            }
+            canvas.toBlob(async (blob) => {
+              if (!blob) return;
+              if (img.src.startsWith('blob:')) URL.revokeObjectURL(img.src);
+              img.src = URL.createObjectURL(blob);
+              scale = 1; translate = { x: 0, y: 0 }; applyTransform();
+              fileMeta.blob = blob;
+              await App.instance.fs.putFile(fileMeta);
+              App.instance.persistSession();
+            }, fileMeta.type || 'image/png');
+          };
+          toolbar.appendChild(btn);
+        });
+        container.append(toolbar, img);
+        container.addEventListener('wheel', (e) => {
+          if (!e.ctrlKey) return;
+          e.preventDefault();
+          scale = Math.max(0.1, scale + (e.deltaY < 0 ? 0.1 : -0.1));
+          if (scale <= 1) { translate = { x: 0, y: 0 }; }
+          applyTransform();
+          UIManager.setZoom(Math.round(scale * 100));
+        });
+        applyTransform();
+        return container;
+      }
+
+      static async createHexView(fileMeta) {
+        const container = document.createElement('div');
+        container.style.fontFamily = 'JetBrains Mono, monospace';
+        container.style.whiteSpace = 'pre';
+        const viewer = document.createElement('div');
+        const controls = document.createElement('div');
+        controls.style.display = 'flex';
+        controls.style.gap = '8px';
+        controls.style.alignItems = 'center';
+        controls.style.padding = '8px 0';
+        const prevBtn = document.createElement('button');
+        prevBtn.textContent = 'Página Anterior';
+        const nextBtn = document.createElement('button');
+        nextBtn.textContent = 'Página Siguiente';
+        const label = document.createElement('span');
+        controls.append(prevBtn, nextBtn, label);
+        container.append(viewer, controls);
+
+        const pageSize = 50 * 1024;
+        const totalPages = fileMeta.blob ? Math.max(1, Math.ceil(fileMeta.blob.size / pageSize)) : 1;
+        let currentPage = 0;
+
+        const renderPage = async (pageIndex) => {
+          if (!fileMeta.blob) return;
+          currentPage = Math.min(Math.max(pageIndex, 0), totalPages - 1);
+          const start = currentPage * pageSize;
+          const end = Math.min(start + pageSize, fileMeta.blob.size);
+          const buffer = new Uint8Array(await fileMeta.blob.slice(start, end).arrayBuffer());
+          const rowSize = 16;
+          let output = '';
+          for (let i = 0; i < buffer.length; i += rowSize) {
+            const slice = buffer.slice(i, i + rowSize);
+            const hex = Array.from(slice).map(b => b.toString(16).padStart(2, '0')).join(' ');
+            const ascii = Array.from(slice).map(b => (b > 31 && b < 127) ? String.fromCharCode(b) : '.').join('');
+            output += `${(start + i).toString(16).padStart(8, '0')}  ${hex.padEnd(48, ' ')}  ${ascii}\n`;
+          }
+          viewer.textContent = output;
+          label.textContent = `Página ${currentPage + 1} / ${totalPages}`;
+          prevBtn.disabled = currentPage === 0;
+          nextBtn.disabled = currentPage >= totalPages - 1;
+        };
+
+        prevBtn.onclick = () => renderPage(currentPage - 1);
+        nextBtn.onclick = () => renderPage(currentPage + 1);
+        await renderPage(0);
+        controls.style.display = totalPages > 1 ? 'flex' : 'none';
+        return container;
       }
     }
 
-    function insertSnippet(text) {
-      const cursorPos = codeArea.selectionStart;
-      const before = codeArea.value.substring(0, cursorPos);
-      const after = codeArea.value.substring(cursorPos);
-      codeArea.value = before + text + after;
-      codeArea.focus();
-      codeArea.selectionStart = codeArea.selectionEnd = cursorPos + text.length;
-      lintCode();
-    }
+    class App {
+      constructor() {
+        this.fs = new FileSystem();
+        this.openTabs = [];
+        this.activeTabId = null;
+        this.config = this.loadConfig();
+      }
 
-    function lintCode() {
-      const code = codeArea.value;
-      const issues = [];
-      const stack = [];
-      const pairs = { '{': '}', '(': ')', '[': ']' };
+      formatSize(bytes = 0) {
+        if (!bytes) return '0 B';
+        const units = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+        const val = bytes / Math.pow(1024, i);
+        return `${val.toFixed(val >= 10 ? 0 : 1)} ${units[i]}`;
+      }
 
-      for (let i = 0; i < code.length; i++) {
-        const ch = code[i];
-        if (pairs[ch]) stack.push({ ch, index: i });
-        if (Object.values(pairs).includes(ch)) {
-          const last = stack.pop();
-          if (!last || pairs[last.ch] !== ch) {
-            issues.push({ type: 'error', message: `Cierre inesperado de ${ch} en el carácter ${i}` });
+      describeFile(file) {
+        if (!file?.blob) return '';
+        const type = file.blob.type || file.type || 'desconocido';
+        return `${type} · ${this.formatSize(file.blob.size)}`;
+      }
+
+      static get instance() {
+        if (!window.__app) window.__app = new App();
+        return window.__app;
+      }
+
+      loadConfig() {
+        const saved = localStorage.getItem(CONFIG_KEY);
+        return saved ? JSON.parse(saved) : { theme: 'dark', zoomLevel: 1, apiKeyOfuscada: '' };
+      }
+
+      saveConfig(cfg) {
+        this.config = { ...this.config, ...cfg };
+        localStorage.setItem(CONFIG_KEY, JSON.stringify(this.config));
+      }
+
+      getConfig() { return this.config; }
+
+      applyTheme(theme = 'dark') {
+        const root = document.documentElement;
+        const themes = {
+          dark: {
+            '--bg-app': '#1e1e1e',
+            '--bg-panel': '#252526',
+            '--bg-active': '#1e1e1e',
+            '--text-primary': '#d4d4d4',
+            '--text-dim': '#858585',
+            '--accent': '#007acc',
+            '--border': '#3e3e42',
+            '--error': '#f48771'
+          },
+          light: {
+            '--bg-app': '#f5f5f5',
+            '--bg-panel': '#ffffff',
+            '--bg-active': '#fdfdfd',
+            '--text-primary': '#1e1e1e',
+            '--text-dim': '#4a4a4a',
+            '--accent': '#007acc',
+            '--border': '#d0d0d0',
+            '--error': '#c02f1d'
+          }
+        };
+        const palette = themes[theme] || themes.dark;
+        Object.entries(palette).forEach(([k, v]) => root.style.setProperty(k, v));
+        UIManager.updateStatusDetail(UIManager.statusDetail?.textContent || '');
+      }
+
+      toggleTheme() {
+        const next = this.config.theme === 'dark' ? 'light' : 'dark';
+        this.saveConfig({ theme: next });
+        this.applyTheme(next);
+        UIManager.showToast(`Tema ${next === 'dark' ? 'oscuro' : 'claro'} activo`, 'info');
+      }
+
+      async toggleFullscreen() {
+        try {
+          if (!document.fullscreenElement) {
+            await document.documentElement.requestFullscreen();
+            UIManager.updateFullscreenButton(true);
+          } else {
+            await document.exitFullscreen();
+            UIManager.updateFullscreenButton(false);
+          }
+        } catch (err) {
+          UIManager.showToast('No se pudo alternar pantalla completa: ' + err, 'error');
+        }
+      }
+
+      async init() {
+        UIManager.setup();
+        await this.fs.init();
+        this.applyTheme(this.config.theme);
+        this.restoreSession();
+        this.bindGlobalEvents();
+      }
+
+      bindGlobalEvents() {
+        document.getElementById('open-file').onclick = () => document.getElementById('file-input').click();
+        document.getElementById('file-input').onchange = (e) => this.handleFileInput(e.target.files);
+        document.getElementById('global-search').onclick = () => this.globalSearch();
+        document.getElementById('compare-files').onclick = () => this.compareFiles();
+        document.getElementById('export-btn').onclick = () => this.exportFile();
+        document.getElementById('settings-btn').onclick = () => this.openSettings();
+        document.getElementById('help-btn').onclick = () => this.showCheatsheet();
+        document.getElementById('fullscreen-btn').onclick = () => this.toggleFullscreen();
+        document.getElementById('quick-open').onclick = () => document.getElementById('file-input').click();
+        document.getElementById('quick-settings').onclick = () => this.openSettings();
+        document.getElementById('quick-draft').onclick = () => this.createDraft();
+        document.getElementById('panic-btn').onclick = () => this.panicMode();
+        window.onblur = () => this.autosave();
+        window.addEventListener('keydown', (e) => this.handleShortcuts(e));
+        document.addEventListener('fullscreenchange', () => UIManager.updateFullscreenButton(!!document.fullscreenElement));
+        const shell = document.getElementById('app-shell');
+        const onDrag = (e) => { e.preventDefault(); e.stopPropagation(); document.body.classList.add('dragging'); };
+        ['dragenter', 'dragover'].forEach(ev => shell.addEventListener(ev, onDrag));
+        shell.addEventListener('dragleave', (e) => { e.preventDefault(); e.stopPropagation(); document.body.classList.remove('dragging'); });
+        shell.addEventListener('drop', (e) => {
+          e.preventDefault(); e.stopPropagation();
+          document.body.classList.remove('dragging');
+          const files = e.dataTransfer?.files;
+          if (files?.length) this.handleFileInput(files);
+        });
+      }
+
+      handleShortcuts(e) {
+        if (e.ctrlKey && e.key.toLowerCase() === 'f') {
+          e.preventDefault();
+          this.globalSearch();
+        }
+        if (e.ctrlKey && e.key.toLowerCase() === 'p') {
+          e.preventDefault();
+          this.printActive();
+        }
+        if (e.ctrlKey && e.key.toLowerCase() === 'k') {
+          e.preventDefault();
+          UIManager.showCommandPalette(this.getCommandActions());
+        }
+      }
+
+      getCommandActions() {
+        return [
+          { label: 'Guardar', meta: 'Ctrl + S', keywords: 'save', action: () => { this.autosave(); UIManager.showToast('Intentando guardar pestañas activas.', 'info'); } },
+          { label: 'Cerrar pestaña', keywords: 'close tab', action: () => this.closeTab(this.activeTabId) },
+          { label: 'Buscar', meta: 'Ctrl + F', keywords: 'search find', action: () => this.globalSearch() },
+          { label: 'Modo Oscuro/Claro', keywords: 'tema dark light', action: () => this.toggleTheme() },
+          { label: 'Alternar Pantalla Completa', keywords: 'fullscreen expand', action: () => this.toggleFullscreen() }
+        ];
+      }
+
+      async handleFileInput(fileList) {
+        let files = Array.from(fileList);
+        if (files.length > 10) {
+          files = files.slice(0, 10);
+          UIManager.showToast('Límite de cola excedido: solo se cargaron los primeros 10 archivos', 'error');
+        }
+        for (const file of files) {
+          if (file.size > 10 * 1024 * 1024) {
+            const proceed = await UIManager.showConfirm('Modo Valiente', `${file.name} supera 10MB. ¿Activar de todos modos?`);
+            if (!proceed) continue;
+          }
+          const id = crypto.randomUUID();
+          const meta = { id, name: file.name, type: file.type, blob: file, lastModified: file.lastModified, isDirty: false };
+          await this.fs.putFile(meta);
+          this.openTabs.push(meta);
+          this.activateTab(id);
+        }
+        this.persistSession();
+        UIManager.updateSidebar(await this.fs.listFiles(), this.openTabs);
+      }
+
+      async createDraft() {
+        const id = crypto.randomUUID();
+        const name = `Borrador ${this.openTabs.length + 1}.md`;
+        const blob = new Blob([''], { type: 'text/markdown' });
+        const meta = { id, name, type: 'text/markdown', blob, lastModified: Date.now(), isDirty: false };
+        await this.fs.putFile(meta);
+        this.openTabs.push(meta);
+        this.activateTab(id);
+        this.persistSession();
+        UIManager.updateSidebar(await this.fs.listFiles(), this.openTabs);
+      }
+
+      async openFromDB(id) {
+        const file = await this.fs.getFile(id);
+        if (!file) return;
+        if (!this.openTabs.find(f => f.id === id)) this.openTabs.push(file);
+        this.activateTab(id);
+        this.persistSession();
+        UIManager.updateSidebar(await this.fs.listFiles(), this.openTabs);
+      }
+
+      async activateTab(id) {
+        this.activeTabId = id;
+        UIManager.renderTabs(this.openTabs);
+        const file = this.openTabs.find(f => f.id === id);
+        if (!file) return;
+        UIManager.updateStatusDetail('');
+        UIManager.setZoom(100);
+        UIManager.updateStatusMeta(this.describeFile(file));
+        const viewer = await EditorFactory.createViewer(file);
+        UIManager.setContent(viewer);
+      }
+
+      markDirty(id, state) {
+        const file = this.openTabs.find(f => f.id === id);
+        if (file) file.isDirty = state;
+        UIManager.renderTabs(this.openTabs);
+        this.persistSession();
+      }
+
+      async saveContent(id, text) {
+        const file = this.openTabs.find(f => f.id === id);
+        if (!file) return;
+        file.blob = new Blob([text], { type: file.type || 'text/plain' });
+        file.isDirty = false;
+        await this.fs.putFile(file);
+        UIManager.renderTabs(this.openTabs);
+        this.persistSession();
+      }
+
+      async closeTab(id) {
+        const idx = this.openTabs.findIndex(f => f.id === id);
+        if (idx === -1) return;
+        const file = this.openTabs[idx];
+        if (file.objectUrl) URL.revokeObjectURL(file.objectUrl);
+        this.openTabs.splice(idx, 1);
+        if (this.activeTabId === id) this.activeTabId = this.openTabs[0]?.id || null;
+        UIManager.renderTabs(this.openTabs);
+        if (this.activeTabId) await this.activateTab(this.activeTabId); else {
+          UIManager.setContent(document.createElement('div'));
+          UIManager.updateStatusMeta('');
+          UIManager.updateStatusDetail('');
+        }
+        this.persistSession();
+        UIManager.updateSidebar(await this.fs.listFiles(), this.openTabs);
+      }
+
+      closeOthers(id) {
+        const keep = this.openTabs.find(f => f.id === id);
+        if (!keep) return;
+        this.openTabs.forEach(f => { if (f.isDirty && f.blob?.text) f.blob.text().then(text => this.saveContent(f.id, text)); });
+        this.openTabs = [keep];
+        this.activeTabId = id;
+        this.fs.putFile(keep);
+        UIManager.renderTabs(this.openTabs);
+        this.activateTab(id);
+        this.persistSession();
+      }
+
+      duplicateTab(id) {
+        const file = this.openTabs.find(f => f.id === id);
+        if (!file) return;
+        const newId = crypto.randomUUID();
+        const copy = { ...file, id: newId, name: file.name + ' (copia)', isDirty: true };
+        this.openTabs.push(copy);
+        this.fs.putFile(copy);
+        this.activateTab(newId);
+        this.persistSession();
+      }
+
+      async renameTab(id) {
+        const file = this.openTabs.find(f => f.id === id);
+        if (!file) return;
+        const name = await UIManager.showInput('Renombrar pestaña', 'Nuevo nombre', file.name);
+        if (!name) return;
+        file.name = name;
+        this.fs.putFile(file);
+        UIManager.renderTabs(this.openTabs);
+        UIManager.updateSidebar([], this.openTabs);
+        this.persistSession();
+      }
+
+      async showProps(id) {
+        const file = this.openTabs.find(f => f.id === id);
+        if (!file) return;
+        const body = document.createElement('div');
+        body.innerHTML = `<p><strong>Nombre:</strong> ${file.name}</p><p><strong>Tamaño:</strong> ${(file.blob?.size || 0)} bytes</p><p><strong>Última modificación:</strong> ${new Date(file.lastModified || Date.now()).toLocaleString()}</p>`;
+        const actions = [{ text: 'Cerrar', onClick: () => UIManager.hideModal() }];
+        if ((file.type || file.blob?.type || '').includes('pdf') || file.name.toLowerCase().endsWith('.pdf')) {
+          const metaWrap = document.createElement('div');
+          metaWrap.style.marginTop = '12px';
+          metaWrap.innerHTML = '<hr style="border-color: var(--border); margin: 10px 0;" />';
+          const titleInput = document.createElement('input');
+          titleInput.placeholder = 'Título PDF';
+          titleInput.style.width = '100%';
+          titleInput.style.marginBottom = '8px';
+          const authorInput = document.createElement('input');
+          authorInput.placeholder = 'Autor';
+          authorInput.style.width = '100%';
+          body.append(metaWrap, titleInput, authorInput);
+          try {
+            await PluginLoader.instance.load('pdflib');
+            const bytes = await file.blob.arrayBuffer();
+            const doc = await PDFLib.PDFDocument.load(bytes);
+            titleInput.value = doc.getTitle() || '';
+            authorInput.value = doc.getAuthor() || '';
+            actions.unshift({
+              text: 'Guardar metadatos',
+              onClick: async () => {
+                try {
+                  doc.setTitle(titleInput.value || undefined);
+                  doc.setAuthor(authorInput.value || undefined);
+                  const newBytes = await doc.save();
+                  file.blob = new Blob([newBytes], { type: 'application/pdf' });
+                  file.lastModified = Date.now();
+                  file.isDirty = false;
+                  await this.fs.putFile(file);
+                  this.persistSession();
+                  UIManager.renderTabs(this.openTabs);
+                  UIManager.showToast('Metadatos PDF actualizados.', 'success');
+                  UIManager.hideModal();
+                } catch (err) {
+                  UIManager.showToast('Error guardando metadatos: ' + err, 'error');
+                }
+              }
+            });
+          } catch (err) {
+            UIManager.showToast('No se pudo leer metadatos PDF: ' + err, 'error');
           }
         }
-      }
-      while (stack.length) {
-        const unclosed = stack.pop();
-        issues.push({ type: 'error', message: `Falta cerrar ${pairs[unclosed.ch]} para el símbolo en posición ${unclosed.index}` });
+        UIManager.showModal('Propiedades', body, actions);
       }
 
-      const lines = code.split('\n');
-      lines.forEach((line, idx) => {
-        if (/console\.log\s*\(\s*['"]debug/.test(line)) {
-          issues.push({ type: 'warn', message: `L${idx + 1}: recuerda retirar logs de depuración.` });
+      async exportFile(id = this.activeTabId) {
+        const targetId = id || this.activeTabId;
+        if (!targetId) return UIManager.showToast('No hay pestaña activa para exportar.', 'error');
+        let file = this.openTabs.find(f => f.id === targetId);
+        if (!file) file = await this.fs.getFile(targetId);
+        if (!file || !file.blob) return UIManager.showToast('Archivo no disponible.', 'error');
+        const url = URL.createObjectURL(file.blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = file.name || 'archivo';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 500);
+        UIManager.showToast('Descarga iniciada.', 'success');
+      }
+
+      async globalSearch() {
+        const term = await UIManager.showInput('Buscar en pestañas', 'Texto a buscar');
+        if (!term) return;
+        const results = [];
+        for (const tab of this.openTabs) {
+          if (!tab.blob || !tab.blob.type.startsWith('text')) continue;
+          const content = await tab.blob.text();
+          const lines = content.split(/\n/);
+          const matches = [];
+          lines.forEach((line, idx) => {
+            if (line.toLowerCase().includes(term.toLowerCase())) {
+              matches.push({ line: idx + 1, preview: line.trim().slice(0, 180) });
+            }
+          });
+          if (matches.length) results.push({ tab, matches });
         }
-        if (/TODO/i.test(line)) {
-          issues.push({ type: 'warn', message: `L${idx + 1}: hay una tarea pendiente (TODO).` });
-        }
-      });
-
-      renderLint(issues);
-    }
-
-    function renderLint(items) {
-      lintList.innerHTML = '';
-      if (!items.length) {
-        lintList.innerHTML = '<li class="lint-item success"><i class="fa-solid fa-circle-check"></i> Sin alertas encontradas.</li>';
-        return;
+        const body = document.createElement('div');
+        if (!results.length) body.textContent = 'Sin coincidencias o archivos no textuales.';
+        results.forEach(r => {
+          const section = document.createElement('div');
+          section.innerHTML = `<strong>${r.tab.name}</strong>`;
+          r.matches.forEach(m => {
+            const btn = document.createElement('button');
+            btn.textContent = `Línea ${m.line}: ${m.preview}`;
+            btn.style.margin = '4px 0';
+            btn.onclick = () => { UIManager.hideModal(); this.activateTab(r.tab.id); };
+            section.appendChild(btn);
+          });
+          body.appendChild(section);
+        });
+        UIManager.showModal('Buscar en pestañas', body, [{ text: 'Cerrar', onClick: () => UIManager.hideModal() }]);
       }
-      items.forEach(item => {
-        const li = document.createElement('li');
-        li.className = 'lint-item';
-        li.innerHTML = `${item.type === 'error' ? '<i class="fa-solid fa-triangle-exclamation warning"></i>' : '<i class="fa-solid fa-circle-info"></i>'} ${item.message}`;
-        lintList.appendChild(li);
-      });
+
+      async compareFiles() {
+        if (this.openTabs.length < 2) return UIManager.showToast('Abre al menos dos archivos.', 'info');
+        await PluginLoader.instance.load('jsdiff');
+        const body = document.createElement('div');
+        const selects = this.openTabs.map(tab => {
+          const label = document.createElement('label');
+          const cb = document.createElement('input');
+          cb.type = 'checkbox';
+          cb.value = tab.id;
+          label.append(cb, ' ', tab.name);
+          body.appendChild(label);
+          body.appendChild(document.createElement('br'));
+          return cb;
+        });
+        const run = async () => {
+          const chosen = selects.filter(cb => cb.checked).map(cb => cb.value);
+          if (chosen.length !== 2) return UIManager.showToast('Selecciona dos archivos.', 'info');
+          const [a, b] = await Promise.all(chosen.map(id => this.fs.getFile(id)));
+          const [aText, bText] = await Promise.all([a.blob.text(), b.blob.text()]);
+          const diff = Diff.diffLines(aText, bText);
+          const wrapper = document.createElement('div');
+          wrapper.className = 'visual-diff';
+          const left = document.createElement('div');
+          left.className = 'diff-pane';
+          const right = document.createElement('div');
+          right.className = 'diff-pane';
+          diff.forEach(part => {
+            const line = document.createElement('div');
+            line.className = 'diff-line ' + (part.added ? 'added' : part.removed ? 'removed' : 'neutral');
+            line.textContent = part.value;
+            if (part.added) right.appendChild(line);
+            else if (part.removed) left.appendChild(line);
+            else { left.appendChild(line.cloneNode(true)); right.appendChild(line); }
+          });
+          wrapper.append(left, right);
+          UIManager.setContent(wrapper);
+          UIManager.hideModal();
+        };
+        UIManager.showModal('Selecciona dos pestañas', body, [
+          { text: 'Cancelar', onClick: () => UIManager.hideModal() },
+          { text: 'Comparar', onClick: run }
+        ]);
+      }
+
+      openSettings() {
+        const body = document.createElement('div');
+        const apiInput = document.createElement('input');
+        apiInput.placeholder = 'API Key (opcional)';
+        apiInput.value = this.config.apiKeyOfuscada || '';
+        apiInput.style.width = '100%';
+        apiInput.style.marginBottom = '10px';
+        const apiHint = document.createElement('div');
+        apiHint.style.display = 'flex';
+        apiHint.style.justifyContent = 'space-between';
+        apiHint.style.alignItems = 'center';
+        apiHint.style.marginBottom = '10px';
+        apiHint.innerHTML = '<small style="color: var(--text-dim);">Necesario para renderizado de alta fidelidad de Word/Excel.</small>';
+        const apiLink = document.createElement('a');
+        apiLink.href = 'https://www.convertapi.com/';
+        apiLink.target = '_blank';
+        apiLink.rel = 'noreferrer';
+        apiLink.textContent = 'Obtener API Key gratuita';
+        apiLink.style.color = 'var(--accent)';
+        apiLink.style.fontWeight = '600';
+        apiHint.appendChild(apiLink);
+        const themeLabel = document.createElement('label');
+        themeLabel.textContent = 'Tema';
+        themeLabel.style.display = 'block';
+        themeLabel.style.margin = '6px 0 4px';
+        const themeSelect = document.createElement('select');
+        ['dark', 'light'].forEach(opt => {
+          const option = document.createElement('option');
+          option.value = opt;
+          option.textContent = opt === 'dark' ? 'Oscuro' : 'Claro';
+          if (this.config.theme === opt) option.selected = true;
+          themeSelect.appendChild(option);
+        });
+        themeSelect.style.width = '100%';
+        themeSelect.style.padding = '6px';
+        themeSelect.style.marginBottom = '12px';
+        body.append(apiInput, apiHint, themeLabel, themeSelect);
+        UIManager.showModal('Ajustes', body, [
+          { text: 'Guardar', onClick: () => { this.saveConfig({ apiKeyOfuscada: apiInput.value, theme: themeSelect.value }); this.applyTheme(themeSelect.value); UIManager.hideModal(); } },
+          { text: 'Cerrar', onClick: () => UIManager.hideModal() }
+        ]);
+      }
+
+      showCheatsheet() {
+        const body = document.createElement('div');
+        const table = document.createElement('table');
+        table.style.width = '100%';
+        table.style.borderCollapse = 'collapse';
+        const rows = [
+          ['Ctrl + S', 'Guardar'],
+          ['Ctrl + F', 'Buscar Global'],
+          ['Ctrl + P', 'Imprimir'],
+          ['Ctrl + Scroll', 'Zoom Editor/Imagen'],
+          ['Arrastrar', 'Abrir archivo']
+        ];
+        rows.forEach(([shortcut, desc]) => {
+          const tr = document.createElement('tr');
+          const td1 = document.createElement('td');
+          const td2 = document.createElement('td');
+          td1.textContent = shortcut;
+          td2.textContent = desc;
+          td1.style.padding = td2.style.padding = '6px';
+          td1.style.color = 'var(--accent)';
+          td2.style.color = 'var(--text-primary)';
+          tr.append(td1, td2);
+          table.appendChild(tr);
+        });
+        body.appendChild(table);
+        UIManager.showModal('Atajos disponibles', body, [{ text: 'Cerrar', onClick: () => UIManager.hideModal() }]);
+      }
+
+      panicMode() {
+        const body = document.createElement('div');
+        body.innerHTML = '<p>Esto borrará todos los datos locales.</p>'; 
+        let counter = 5;
+        const confirmBtn = document.createElement('button');
+        confirmBtn.textContent = `Confirmar (${counter})`;
+        confirmBtn.disabled = true;
+        const timer = setInterval(() => {
+          counter -= 1;
+          confirmBtn.textContent = `Confirmar (${counter})`;
+          if (counter <= 0) { confirmBtn.disabled = false; clearInterval(timer); }
+        }, 1000);
+        confirmBtn.onclick = () => { indexedDB.deleteDatabase(this.fs.dbName); localStorage.clear(); location.reload(); };
+        UIManager.showModal('Factory Reset', body, [
+          { text: 'Cancelar', onClick: () => { clearInterval(timer); UIManager.hideModal(); } },
+          { text: 'Confirmar', variant: 'danger', onClick: confirmBtn.onclick }
+        ]);
+      }
+
+      autosave() {
+        this.openTabs.forEach(tab => { if (tab.isDirty && tab.blob?.text) tab.blob.text().then(text => this.saveContent(tab.id, text)); });
+      }
+
+      async restoreSession() {
+        const ids = JSON.parse(localStorage.getItem(SESSION_KEY) || '[]');
+        const files = await this.fs.listFiles();
+        ids.forEach(id => {
+          const file = files.find(f => f.id === id);
+          if (file) this.openTabs.push(file);
+        });
+        UIManager.updateSidebar(files, this.openTabs);
+        UIManager.renderTabs(this.openTabs);
+        if (this.openTabs.length) this.activateTab(this.openTabs[0].id); else UIManager.updateStatusMeta('');
+      }
+
+      persistSession() {
+        localStorage.setItem(SESSION_KEY, JSON.stringify(this.openTabs.map(f => f.id)));
+      }
+
+      printActive() {
+        const body = document.createElement('div');
+        body.style.display = 'flex';
+        body.style.flexDirection = 'column';
+        body.style.gap = '8px';
+        const ecoRow = document.createElement('label');
+        const eco = document.createElement('input');
+        eco.type = 'checkbox';
+        ecoRow.append(eco, document.createTextNode(' Modo Ahorro (Eco-Friendly)'));
+        const lineRow = document.createElement('label');
+        const lineNumbers = document.createElement('input');
+        lineNumbers.type = 'checkbox';
+        lineRow.append(lineNumbers, document.createTextNode(' Imprimir Números de Línea'));
+        body.append(ecoRow, lineRow);
+        UIManager.showModal('Opciones de impresión', body, [
+          { text: 'Cancelar', onClick: () => UIManager.hideModal() },
+          { text: 'Imprimir', onClick: () => {
+            UIManager.hideModal();
+            const style = document.createElement('style');
+            style.id = 'print-options-style';
+            let css = '@media print {';
+            if (eco.checked) {
+              css += 'body, #app-shell, .content { background: #fff !important; color: #000 !important; } * { box-shadow: none !important; background-color: transparent !important; color: #000 !important; }';
+            }
+            if (lineNumbers.checked) {
+              css += '.monaco-editor .margin, .monaco-editor .glyph-margin, .monaco-editor .line-numbers { display: block !important; color: #000 !important; }';
+              css += '.monaco-editor .monaco-editor-background, pre { background: #fff !important; color: #000 !important; }';
+            }
+            css += '}';
+            style.textContent = css;
+            document.head.appendChild(style);
+            const cleanup = () => { style.remove(); window.removeEventListener('afterprint', cleanup); };
+            window.addEventListener('afterprint', cleanup);
+            setTimeout(() => window.print(), 50);
+          } }
+        ]);
+      }
     }
 
-    function handleCodeInput() {
-      codeArea.addEventListener('input', () => {
-        const line = getCurrentLine();
-        renderSuggestions(line.trim());
-        lintCode();
-      });
-    }
-
-    function getCurrentLine() {
-      const cursor = codeArea.selectionStart;
-      const untilCursor = codeArea.value.slice(0, cursor);
-      const parts = untilCursor.split('\n');
-      return parts[parts.length - 1];
-    }
-
-    function init() {
-      renderTemplates();
-      bindFormatting();
-      handleActions();
-      initDocArea();
-      handleFileImport();
-      handleCodeInput();
-      resetDocument();
-      renderSuggestions();
-      lintCode();
-    }
-
-    init();
+    window.onload = () => App.instance.init();
   </script>
 </body>
 </html>
