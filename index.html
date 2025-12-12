@@ -3,54 +3,64 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Universal DocViewer Pro</title>
+  <title>Hacker Elegante - DocViewer Pro v3.4</title>
   
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="data:application/manifest+json;base64,eyJuYW1lIjoiSGFja2VyIEVsZWdhbnRlIERvY1ZpZXdlciIsInNob3J0X25hbWUiOiJEb2NWaWV3ZXIiLCJzdGFydF91cmwiOiIuLyIsImRpc3BsYXkiOiJzdGFuZGFsb25lIiwiYmFja2dyb3VuZF9jb2xvciI6IiMwZjE3MmEiLCJ0aGVtZV9jb2xvciI6IiM2MzY2ZjEiLCJpY29ucyI6W3sic3JjIjoiaHR0cHM6Ly9jZG4tanRlY2hvbGluZS5jb20vZmlsZXMvZG9jdmlld2VyLWljb24ucG5nIiwic2l6ZXMiOiIxOTJ4MTkyIiwidHlwZSI6ImltYWdlL3BuZyJ9XX0=" />
+
   <!-- Librerías Externas -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
   
-  <!-- Fuentes: Inter para UI, JetBrains Mono para Código -->
+  <!-- Fuentes -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 
   <style>
     :root {
-      /* Paleta de Colores: "Midnight Slate" Theme */
-      --bg-app: #0f172a;           /* Fondo principal muy oscuro */
-      --bg-panel: #1e293b;         /* Paneles laterales y modales */
-      --bg-header: rgba(15, 23, 42, 0.85); /* Cabecera translúcida */
-      --bg-hover: #334155;         /* Hover states */
-      --bg-input: #020617;         /* Inputs oscuros */
+      /* Theme: Midnight Slate */
+      --bg-app: #0f172a;
+      --bg-panel: #1e293b;
+      --bg-header: rgba(15, 23, 42, 0.95);
+      --bg-hover: #334155;
+      --bg-input: #020617;
+      --bg-selection: #2563eb;
       
-      --accent: #6366f1;           /* Indigo vibrante */
-      --accent-hover: #4f46e5;     /* Indigo más oscuro */
-      --accent-glow: rgba(99, 102, 241, 0.3);
+      --accent: #6366f1;
+      --accent-hover: #4f46e5;
       
-      --text-primary: #f8fafc;     /* Blanco casi puro */
-      --text-secondary: #94a3b8;   /* Gris azulado */
-      --text-muted: #64748b;       /* Gris oscuro para detalles */
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
       
-      --border: #334155;           /* Bordes sutiles */
-      --border-light: #475569;
-      
+      --border: #334155;
       --success: #10b981;
       --error: #ef4444;
       --warning: #f59e0b;
       
-      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3);
-      --shadow-lg: 0 20px 25px -5px rgb(0 0 0 / 0.5), 0 8px 10px -6px rgb(0 0 0 / 0.5);
-      
       --radius-sm: 6px;
       --radius-md: 8px;
-      --radius-lg: 12px;
       
-      --font-ui: "Inter", system-ui, sans-serif;
-      --font-code: "JetBrains Mono", monospace;
+      --font-ui: "Inter", sans-serif;
+      --font-code: 'JetBrains Mono', 'Courier New', monospace;
+      
+      --shadow-lg: 0 20px 25px -5px rgb(0 0 0 / 0.5);
     }
 
-    /* Reset & Base */
+    /* Light Theme Variables */
+    [data-theme="light"] {
+      --bg-app: #f1f5f9;
+      --bg-panel: #ffffff;
+      --bg-header: rgba(255, 255, 255, 0.95);
+      --bg-hover: #e2e8f0;
+      --bg-input: #f8fafc;
+      --text-primary: #0f172a;
+      --text-secondary: #475569;
+      --border: #cbd5e1;
+    }
+
     * { box-sizing: border-box; margin: 0; padding: 0; outline: none; }
     
     body {
@@ -60,1352 +70,1075 @@
       height: 100vh;
       overflow: hidden;
       line-height: 1.5;
-      -webkit-font-smoothing: antialiased;
     }
 
-    /* Scrollbars personalizadas */
+    /* Scrollbars */
     ::-webkit-scrollbar { width: 10px; height: 10px; }
     ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb {
-      background: var(--bg-hover);
-      border: 3px solid var(--bg-app);
-      border-radius: 10px;
-    }
+    ::-webkit-scrollbar-thumb { background: var(--bg-hover); border-radius: 5px; border: 2px solid var(--bg-app); }
     ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
 
-    /* Layout Principal */
-    #app-shell {
-      display: grid;
-      grid-template-rows: 50px 1fr 28px; /* Header más alto, status bar clásica */
-      height: 100vh;
-      overflow: hidden;
-    }
+    /* Layout */
+    #app-shell { display: grid; grid-template-rows: 50px 1fr 28px; height: 100vh; }
 
-    /* --- HEADER --- */
-    header {
-      background: var(--bg-header);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      padding: 0 16px;
-      gap: 12px;
-      z-index: 50;
-    }
+    /* Header */
+    header { background: var(--bg-header); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 16px; gap: 12px; z-index: 50; }
+    header .brand { font-weight: 700; color: var(--text-primary); font-size: 16px; display: flex; gap: 8px; margin-right: 12px; }
+    header button { background: transparent; border: 1px solid transparent; color: var(--text-secondary); padding: 6px 12px; border-radius: var(--radius-sm); cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 8px; transition: all 0.2s; }
+    header button:hover { background: var(--bg-hover); color: var(--text-primary); }
+    .divider { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
 
-    header .brand {
-      font-weight: 700;
-      color: var(--text-primary);
-      font-size: 16px;
-      margin-right: 12px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    
-    header .brand i { color: var(--accent); }
-
-    /* Botones de Header */
-    header button, .pill {
-      background: transparent;
-      border: 1px solid transparent;
-      color: var(--text-secondary);
-      padding: 6px 12px;
-      border-radius: var(--radius-sm);
-      cursor: pointer;
-      font-size: 13px;
-      font-weight: 500;
-      transition: all 0.2s ease;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    header button:hover {
-      background: var(--bg-hover);
-      color: var(--text-primary);
-    }
-    
-    header button:active { transform: translateY(1px); }
-    
-    /* Separador en header */
-    header .divider { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
-
-    #session-info {
-      margin-left: auto;
-      background: rgba(99, 102, 241, 0.1);
-      color: var(--accent);
-      border: 1px solid rgba(99, 102, 241, 0.2);
-      font-size: 11px;
-      padding: 4px 10px;
-    }
-
-    /* --- MAIN AREA --- */
-    main {
-      display: grid;
-      grid-template-rows: 40px 1fr; /* Tab bar height, content */
-      overflow: hidden;
-    }
-
-    /* Tab Bar */
-    .tab-bar {
-      background: var(--bg-app);
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: flex-end; /* Tabs pegadas abajo */
-      padding: 0 8px;
-      gap: 4px;
-      user-select: none;
-    }
-
-    .tabs-container {
-      display: flex;
-      gap: 4px;
-      overflow-x: auto;
-      flex: 1;
-      height: 100%;
-      align-items: flex-end;
-      scrollbar-width: none;
-    }
-    .tabs-container::-webkit-scrollbar { display: none; }
-
-    .tab {
-      padding: 8px 16px;
-      padding-right: 32px; /* espacio para close */
-      background: transparent;
-      color: var(--text-secondary);
-      border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-      font-size: 12px;
-      max-width: 200px;
-      min-width: 120px;
-      position: relative;
-      cursor: pointer;
-      border: 1px solid transparent;
-      border-bottom: none;
-      transition: all 0.15s;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .tab:hover {
-      background: var(--bg-hover);
-      color: var(--text-primary);
-    }
-
-    .tab.active {
-      background: var(--bg-panel);
-      color: var(--accent);
-      border-color: var(--border);
-      border-bottom-color: var(--bg-panel); /* Fusionarse con el panel */
-      font-weight: 600;
-      z-index: 10;
-      box-shadow: 0 -4px 6px -4px rgba(0,0,0,0.1);
-    }
-    
-    .tab.active::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 2px;
-      background: var(--accent);
-      border-radius: 2px 2px 0 0;
-    }
-
-    .tab .close {
-      position: absolute;
-      right: 8px; top: 50%;
-      transform: translateY(-50%);
-      width: 16px; height: 16px;
-      display: flex; align-items: center; justify-content: center;
-      border-radius: 50%;
-      opacity: 0;
-      transition: all 0.2s;
-    }
+    /* Main Area & Tabs */
+    main { display: grid; grid-template-rows: 36px 1fr; overflow: hidden; }
+    .tab-bar { background: var(--bg-app); border-bottom: 1px solid var(--border); display: flex; align-items: flex-end; padding: 0 8px; gap: 4px; }
+    .tabs-container { display: flex; gap: 4px; overflow-x: auto; flex: 1; scrollbar-width: none; }
+    .tab { padding: 6px 16px 6px 12px; background: transparent; color: var(--text-secondary); border-radius: var(--radius-sm) var(--radius-sm) 0 0; font-size: 12px; max-width: 180px; cursor: pointer; border: 1px solid transparent; border-bottom: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; position: relative; }
+    .tab:hover { background: var(--bg-hover); }
+    .tab.active { background: var(--bg-panel); color: var(--accent); border-color: var(--border); font-weight: 600; border-bottom-color: var(--bg-panel); }
+    .tab .close { margin-left: 8px; opacity: 0; font-size: 14px; }
     .tab:hover .close { opacity: 1; }
-    .tab .close:hover { background: rgba(239, 68, 68, 0.2); color: var(--error); }
-    
-    .tab .dirty-dot {
-      display: inline-block;
-      width: 6px; height: 6px;
-      background: var(--warning);
-      border-radius: 50%;
-      margin-right: 6px;
-    }
+    .tab .close:hover { color: var(--error); }
 
     /* Workspace */
-    .workspace {
-      display: grid;
-      grid-template-columns: 260px 1fr;
-      background: var(--bg-panel);
-      height: 100%;
-      overflow: hidden;
-    }
+    .workspace { display: grid; grid-template-columns: 240px 1fr; background: var(--bg-panel); height: 100%; overflow: hidden; }
+    .sidebar { background: var(--bg-panel); border-right: 1px solid var(--border); padding: 10px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
+    .sidebar h4 { color: var(--text-muted); font-size: 11px; text-transform: uppercase; margin-bottom: 8px; font-weight: 600; }
+    .file-item { padding: 6px 8px; border-radius: var(--radius-sm); cursor: pointer; color: var(--text-secondary); font-size: 13px; display: flex; gap: 8px; align-items: center; }
+    .file-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+    .file-item.active { color: var(--accent); background: rgba(99, 102, 241, 0.1); }
 
-    /* Sidebar */
-    .sidebar {
-      background: var(--bg-panel);
-      border-right: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-      padding: 16px;
-      overflow-y: auto;
-    }
+    /* Content */
+    .content-region { position: relative; background: #111; overflow: hidden; display: flex; flex-direction: column; }
+    [data-theme="light"] .content-region { background: #e2e8f0; }
+    .content-scroll { width: 100%; height: 100%; overflow: auto; position: relative; }
 
-    .sidebar section h4 {
-      color: var(--text-muted);
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-bottom: 10px;
-      font-weight: 600;
-    }
-
-    .sidebar .file-item {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 8px 10px;
-      border-radius: var(--radius-sm);
-      cursor: pointer;
-      color: var(--text-secondary);
-      font-size: 13px;
-      transition: background 0.15s;
-    }
-    .sidebar .file-item:hover { background: var(--bg-hover); color: var(--text-primary); }
-    .sidebar .file-item i { width: 16px; text-align: center; }
-
-    /* Content Region */
-    .content-region {
-      position: relative;
-      background: #141b25; /* Fondo ligeramente diferente para editores */
-      overflow: hidden;
+    /* --- SPECIALIZED VIEWS CSS --- */
+    
+    /* IMPROVED OFFICE EDITOR LAYOUT */
+    .office-editor-wrapper { display: flex; flex-direction: column; height: 100%; background: #e5e7eb; color: #000; }
+    .ql-toolbar { border-color: #ccc !important; background: #f3f4f6; z-index: 10; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    .ql-container { border: none !important; flex: 1; overflow-y: auto !important; display: flex; justify-content: center; padding: 40px 20px; }
+    
+    #print-container {
+        background: white; 
+        width: 210mm; 
+        min-height: 297mm; 
+        padding: 25mm;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.15); 
+        margin-bottom: 40px;
+        overflow-y: visible !important;
+        height: auto !important;
+        color: black;
     }
     
-    .content-scroll { height: 100%; overflow: auto; position: relative; }
-    .content-scroll.hidden { display: none; }
-
-    /* --- WELCOME SCREEN --- */
-    .welcome-screen {
-      position: absolute; inset: 0;
-      display: none; /* Flex cuando activo */
-      align-items: center; justify-content: center;
-      background: radial-gradient(circle at top right, #1e293b 0%, #0f172a 100%);
-      z-index: 10;
+    .docx-viewer-container {
+        background: #e5e7eb;
+        padding: 40px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-height: 100%;
+        overflow: auto;
     }
-
-    .welcome-card {
-      width: 100%; max-width: 800px;
-      background: rgba(30, 41, 59, 0.5);
-      backdrop-filter: blur(10px);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 40px;
-      box-shadow: var(--shadow-lg);
-      display: grid;
-      grid-template-columns: 1.5fr 1fr;
-      gap: 40px;
+    .docx-wrapper, .odt-wrapper {
+        background: white;
+        width: 210mm;
+        min-height: 297mm;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+        padding: 25mm;
+        margin-bottom: 20px;
+        color: black;
+        font-family: 'Times New Roman', serif;
+        font-size: 12pt;
+        line-height: 1.5;
+        overflow-wrap: break-word;
     }
     
-    .welcome-hero h1 {
-      font-size: 28px;
-      font-weight: 700;
-      margin-bottom: 8px;
-      background: linear-gradient(to right, #fff, #94a3b8);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-    .welcome-hero p { color: var(--text-muted); margin-bottom: 24px; font-size: 15px; }
+    .odt-wrapper p { margin-bottom: 1em; }
+    .odt-wrapper h1 { font-size: 24pt; font-weight: bold; margin-top: 1em; margin-bottom: 0.5em; }
+    .odt-wrapper h2 { font-size: 18pt; font-weight: bold; margin-top: 1em; margin-bottom: 0.5em; }
+    .odt-wrapper h3 { font-size: 14pt; font-weight: bold; }
+    .odt-wrapper img { max-width: 100%; height: auto; }
+    .odt-wrapper table { width: 100%; border-collapse: collapse; margin: 1em 0; }
+    .odt-wrapper td, .odt-wrapper th { border: 1px solid #000; padding: 5px; }
 
-    .quick-actions { display: grid; gap: 12px; }
-    .action-card {
-      background: var(--bg-input);
-      border: 1px solid var(--border);
-      padding: 16px;
-      border-radius: var(--radius-md);
-      cursor: pointer;
-      display: flex; align-items: center; gap: 16px;
-      transition: all 0.2s;
-    }
-    .action-card:hover {
-      border-color: var(--accent);
-      transform: translateY(-2px);
-      box-shadow: var(--shadow-md);
-    }
-    .action-card i { font-size: 20px; color: var(--accent); }
-    .action-card div strong { display: block; color: var(--text-primary); margin-bottom: 2px; }
-    .action-card div small { color: var(--text-secondary); }
-
-    .recents-panel {
-      border-left: 1px solid var(--border);
-      padding-left: 30px;
-    }
-    .recent-item {
-      padding: 8px;
-      border-radius: var(--radius-sm);
-      cursor: pointer;
-      display: flex; align-items: center; gap: 10px;
-      color: var(--text-secondary);
-      font-size: 13px;
-    }
-    .recent-item:hover { background: var(--bg-hover); color: var(--text-primary); }
-
-    /* --- STATUS BAR --- */
-    .statusbar {
-      background: var(--bg-app);
-      border-top: 1px solid var(--border);
-      padding: 0 16px;
-      display: flex; align-items: center; gap: 16px;
-      font-size: 11px;
-      color: var(--text-muted);
-      font-family: var(--font-ui);
-    }
-    .statusbar .spinner {
-      width: 12px; height: 12px;
-      border: 2px solid var(--border);
-      border-top-color: var(--accent);
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      display: none;
-    }
-    .statusbar .spinner.active { display: block; }
-    .statusbar .detail { margin-left: auto; color: var(--text-primary); font-family: var(--font-code); }
-
-    /* --- PDF TOOLBAR (Estilo Flotante) --- */
-    .pdf-toolbar {
-      position: sticky; top: 16px;
-      margin: 0 auto 20px;
-      max-width: 900px;
-      background: rgba(30, 41, 59, 0.9);
-      backdrop-filter: blur(8px);
-      border: 1px solid var(--border-light);
-      border-radius: 100px; /* Pill shape total */
-      padding: 6px 12px;
-      display: flex; align-items: center; gap: 12px;
-      box-shadow: var(--shadow-lg);
-      z-index: 20;
-    }
+    /* Media View */
+    .media-view { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 20px; }
+    .media-view img, .media-view video { max-width: 90%; max-height: 90%; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
     
-    .toolbar-group {
-      display: flex; align-items: center; gap: 4px;
-      border-right: 1px solid var(--border);
-      padding-right: 12px;
-    }
-    .toolbar-group:last-child { border: none; padding-right: 0; }
-    
-    .pdf-toolbar button {
-      background: transparent;
-      border: none;
-      color: var(--text-secondary);
-      width: 36px; height: 36px;
-      border-radius: 50%;
-      display: grid; place-items: center;
-      transition: all 0.2s;
-      cursor: pointer;
-    }
-    .pdf-toolbar button:hover { background: var(--bg-hover); color: var(--text-primary); }
-    .pdf-toolbar button.active { background: var(--accent); color: white; }
-    
-    .pdf-toolbar input[type="color"] {
-      width: 28px; height: 28px; border: none; padding: 0; background: none; cursor: pointer;
-      border-radius: 50%; overflow: hidden;
-    }
-    
-    .pdf-page {
-      margin: 20px auto;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-    }
+    /* Split View */
+    .split-view { display: flex; width: 100%; height: 100%; overflow: hidden; }
+    .split-editor { width: 50%; height: 100%; overflow: hidden; flex-shrink: 0; }
+    .split-preview { flex: 1; height: 100%; overflow: auto; background: var(--bg-panel); color: var(--text-primary); position: relative; padding: 30px; }
+    [data-theme="light"] .split-preview { background: #fff; color: #333; }
+    .split-resizer-handle { width: 8px; cursor: col-resize; background: var(--bg-app); border-left: 1px solid var(--border); border-right: 1px solid var(--border); flex-shrink: 0; z-index: 20; transition: background 0.2s; }
+    .split-resizer-handle:hover, .split-resizer-handle.dragging { background: var(--accent); }
 
-    /* --- EDITORS & PREVIEWS --- */
-    .split-view { display: flex; height: 100%; }
-    .split-pane { flex: 1; overflow: auto; }
-    .split-resizer { width: 4px; background: var(--bg-app); cursor: col-resize; transition: background 0.2s; }
-    .split-resizer:hover { background: var(--accent); }
+    /* Markdown Styling */
+    .split-preview h1 { border-bottom: 1px solid var(--border); padding-bottom: 0.3em; }
+    .split-preview code { background: rgba(127,127,127,0.15); padding: 2px 5px; border-radius: 4px; color: var(--accent); }
+    .split-preview pre { background: #0f172a; padding: 15px; border-radius: 8px; overflow-x: auto; color: #e2e8f0; }
+    .split-preview blockquote { border-left: 4px solid var(--accent); padding-left: 15px; color: var(--text-muted); }
+    .split-preview table { width: 100%; border-collapse: collapse; }
+    .split-preview th, .split-preview td { border: 1px solid var(--border); padding: 8px; text-align: left; }
+    .split-preview img { max-width: 100%; border-radius: 6px; }
+
+    /* Console */
+    .console-panel { height: 150px; background: #000; color: #fff; font-family: var(--font-code); font-size: 12px; padding: 10px; overflow-y: auto; border-top: 1px solid var(--border); display: none; }
+    .log-entry { margin-bottom: 4px; border-bottom: 1px solid #333; word-wrap: break-word; white-space: pre-wrap; }
+    .log-error { color: var(--error); } .log-success { color: var(--success); } .log-warning { color: var(--warning); } .log-info { color: var(--accent); }
+
+    /* PDF Tools */
+    .pdf-text-input { position: absolute; background: rgba(255,255,255,0.9); color: black; border: 1px solid var(--accent); padding: 4px; font-family: sans-serif; font-size: 14px; min-width: 100px; z-index: 50; }
+    .pdf-canvas-layer { pointer-events: none; position: absolute; top:0; left:0; z-index: 20; }
+    .pdf-page-wrapper.draw-mode .pdf-canvas-layer { pointer-events: auto; cursor: crosshair; }
     
-    .editor-pane textarea {
-      background: #0f172a; /* Fondo código */
-      color: #e2e8f0;
-      padding: 20px;
-      line-height: 1.6;
-      font-size: 14px;
-    }
-    .preview-pane {
-      background: #1e293b;
-      padding: 30px;
-      color: #cbd5e1;
-    }
-    /* Estilos Markdown Preview */
-    .preview-pane h1, .preview-pane h2 { border-bottom: 1px solid var(--border); padding-bottom: 0.3em; margin-bottom: 1em; color: white; }
-    .preview-pane code { background: rgba(0,0,0,0.3); padding: 2px 5px; border-radius: 4px; font-family: var(--font-code); color: #fca5a5; }
-    .preview-pane pre { background: #0f172a; padding: 15px; border-radius: 8px; overflow-x: auto; }
-    .preview-pane blockquote { border-left: 4px solid var(--accent); padding-left: 15px; color: var(--text-muted); }
+    /* Toolbar */
+    .floating-toolbar { position: sticky; top: 20px; margin: 0 auto 20px auto; background: var(--bg-header); border: 1px solid var(--border); border-radius: 20px; padding: 5px 15px; display: flex; gap: 10px; z-index: 40; box-shadow: var(--shadow-lg); backdrop-filter: blur(5px); width: fit-content; }
+    .floating-toolbar button { background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 5px; font-size: 14px; }
+    .floating-toolbar button:hover, .floating-toolbar button.active { color: var(--accent); }
 
-    /* --- JSON TREE --- */
-    .json-tree { padding: 20px; font-family: var(--font-code); font-size: 13px; }
-    .json-node { margin-left: 14px; position: relative; }
-    .json-node .key { color: #93c5fd; } /* Azul claro */
-    .json-node .value { color: #fdba74; } /* Naranja suave */
-    .json-node .type { color: var(--text-muted); opacity: 0.7; }
-    .json-tree .toggle { cursor: pointer; color: var(--text-muted); position: absolute; left: -14px; }
-    .json-tree .toggle:hover { color: white; }
+    /* Modals */
+    .cmd-backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; display: none; justify-content: center; align-items: flex-start; padding-top: 80px; backdrop-filter: blur(4px); }
+    .cmd-palette { width: 600px; max-width: 90%; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); overflow: hidden; display: flex; flex-direction: column; max-height: 400px; }
+    .cmd-input-wrapper { padding: 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; }
+    #cmd-input { background: transparent; border: none; width: 100%; font-size: 18px; color: var(--text-primary); }
+    .cmd-list { list-style: none; overflow-y: auto; padding: 8px 0; margin: 0; }
+    .cmd-item { padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; color: var(--text-secondary); transition: all 0.1s; }
+    .cmd-item:hover, .cmd-item.selected { background: var(--bg-selection); color: white; }
+    .cmd-item .shortcut { font-size: 11px; opacity: 0.7; border: 1px solid rgba(255,255,255,0.3); padding: 2px 6px; border-radius: 4px; }
 
-    /* --- MODALS & OVERLAYS --- */
-    .modal-backdrop {
-      position: fixed; inset: 0;
-      background: rgba(0, 0, 0, 0.6);
-      backdrop-filter: blur(4px);
-      display: none; align-items: center; justify-content: center;
-      z-index: 100;
-      animation: fadeIn 0.2s;
-    }
-    .modal {
-      background: var(--bg-panel);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      width: 100%; max-width: 500px;
-      box-shadow: var(--shadow-lg);
-      animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    .modal header {
-      padding: 16px 20px;
-      border-bottom: 1px solid var(--border);
-      display: flex; justify-content: space-between; align-items: center;
-      font-weight: 600;
-    }
-    .modal header button { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 18px; }
-    .modal header button:hover { color: var(--error); }
-    #modal-body { padding: 20px; }
-    .modal footer {
-      padding: 16px 20px;
-      border-top: 1px solid var(--border);
-      display: flex; justify-content: flex-end; gap: 10px;
-    }
-    
-    /* Botones Genéricos */
-    .modal button {
-      padding: 8px 16px;
-      border-radius: var(--radius-sm);
-      border: 1px solid var(--border);
-      background: transparent;
-      color: var(--text-primary);
-      cursor: pointer;
-      font-weight: 500;
-    }
-    .modal button:hover { background: var(--bg-hover); }
-    .modal button:last-child { /* Primary Action */
-      background: var(--accent);
-      border-color: var(--accent);
-      color: white;
-    }
-    .modal button:last-child:hover { background: var(--accent-hover); }
-
-    /* Command Palette */
-    .command-palette {
-      background: var(--bg-panel);
-      border: 1px solid var(--border);
-      box-shadow: 0 0 0 100vw rgba(0,0,0,0.5); /* Backdrop hack */
-    }
-
-    /* Toasts */
-    #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 200; display: flex; flex-direction: column; gap: 10px; }
-    .toast {
-      background: var(--bg-panel);
-      border-left: 4px solid var(--accent);
-      color: white;
-      padding: 12px 16px;
-      border-radius: var(--radius-sm);
-      box-shadow: var(--shadow-lg);
-      font-size: 13px;
-      min-width: 250px;
-      animation: slideInRight 0.3s;
-      display: flex; align-items: center; justify-content: space-between;
-    }
-    .toast.success { border-color: var(--success); }
-    .toast.error { border-color: var(--error); }
-    
-    /* Drag Overlay */
-    .drag-overlay {
-      position: fixed; inset: 0;
-      background: rgba(99, 102, 241, 0.15); /* Accent tint */
-      backdrop-filter: blur(10px);
-      z-index: 150;
-      display: none; align-items: center; justify-content: center;
-    }
-    body.dragging .drag-overlay { display: flex; }
-    .dropzone {
-      border: 3px dashed var(--accent);
-      padding: 50px;
-      border-radius: 20px;
-      text-align: center;
-      background: rgba(15, 23, 42, 0.8);
-    }
-    .dropzone i { font-size: 48px; color: var(--accent); margin-bottom: 15px; }
-
-    /* Animations */
-    @keyframes spin { to { transform: rotate(360deg); } }
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .modal-backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; display: none; justify-content: center; align-items: center; backdrop-filter: blur(2px); }
+    .modal { width: 500px; max-width: 90%; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow-lg); overflow: hidden; display: flex; flex-direction: column; animation: slideUp 0.2s; }
     @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-    @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-
-    /* Utility */
-    .hidden { display: none !important; }
+    .modal-header { padding: 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; font-weight: 600; }
+    .modal-body { padding: 20px; overflow-y: auto; max-height: 60vh; }
     
-    /* Responsive */
-    @media (max-width: 900px) {
-      .workspace { grid-template-columns: 1fr; }
-      .sidebar { display: none; } /* Ocultar sidebar en móvil */
-    }
+    .draft-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+    .draft-option { background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 10px; cursor: pointer; transition: all 0.2s; color: var(--text-primary); }
+    .draft-option:hover { border-color: var(--accent); background: var(--bg-hover); transform: translateY(-2px); }
+    .draft-option i { font-size: 24px; margin-bottom: 5px; }
+
+    .zoom-float { position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: white; padding: 5px 12px; border-radius: 20px; font-size: 12px; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 200; }
+    .zoom-float.visible { opacity: 1; }
+
+    .shortcuts-container { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+    .shortcut-section h3 { margin-top: 0; color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 5px; margin-bottom: 15px; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; }
+    .shortcut-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 13px; align-items: center; }
+    .shortcut-desc { color: var(--text-secondary); }
+    .shortcut-keys kbd { background: var(--bg-hover); border: 1px solid var(--border); border-radius: 4px; padding: 3px 8px; font-family: var(--font-code); font-size: 11px; color: var(--text-primary); box-shadow: 0 2px 0 var(--bg-app); margin-left: 4px; display: inline-block; }
+
+    .hidden { display: none !important; }
+    @media (max-width: 768px) { .workspace { grid-template-columns: 1fr; } .sidebar { display: none; } .shortcuts-container { grid-template-columns: 1fr; gap: 20px; } }
   </style>
 </head>
 <body>
   <div id="app-shell">
     <header>
-      <div class="brand">
-        <i class="fa-solid fa-layer-group"></i>
-        DocViewer <span style="font-weight:300; opacity:0.6; margin-left:4px;">Pro</span>
-      </div>
-      
+      <div class="brand"><i class="fa-solid fa-code"></i> Hacker Elegante</div>
       <div class="divider"></div>
-      
-      <button id="open-file" title="Abrir archivo local (Ctrl+O)">
-        <i class="fa-solid fa-folder-open"></i> Abrir
-      </button>
-      <button id="quick-draft" title="Crear documento nuevo">
-        <i class="fa-solid fa-plus"></i> Nuevo
-      </button>
-      
+      <button onclick="App.instance.openFileDialog()" title="Abrir archivo"><i class="fa-regular fa-folder-open"></i> Abrir</button>
+      <button onclick="App.instance.saveCurrent()" title="Guardar cambios"><i class="fa-solid fa-floppy-disk"></i> Guardar</button>
+      <button onclick="App.instance.promptExport()" title="Exportar documento"><i class="fa-solid fa-file-export"></i> Exportar</button>
       <div class="divider"></div>
-
-      <button id="global-search" title="Buscar en todos los archivos (Ctrl+F)">
-        <i class="fa-solid fa-magnifying-glass"></i>
-      </button>
-      <button id="compare-files" title="Comparar dos archivos">
-        <i class="fa-solid fa-code-compare"></i>
-      </button>
-      <button id="export-btn" title="Descargar archivo actual">
-        <i class="fa-solid fa-download"></i>
-      </button>
-      
-      <div style="flex:1"></div> <!-- Spacer -->
-      
-      <button id="settings-btn"><i class="fa-solid fa-sliders"></i></button>
-      <button id="fullscreen-btn"><i class="fa-solid fa-expand"></i></button>
-      <span class="pill" id="session-info">Sesión Local</span>
+      <button onclick="App.instance.createDraft()" title="Crear Nuevo Documento"><i class="fa-solid fa-plus"></i> Draft</button>
+      <button onclick="UIManager.toggleCommandPalette()" title="Comandos"><i class="fa-solid fa-terminal"></i> Comandos</button>
+      <div style="flex:1"></div>
+      <button onclick="UIManager.showShortcutsHelp()" title="Atajos de Teclado"><i class="fa-solid fa-circle-question"></i></button>
+      <button onclick="SettingsManager.open()" title="Configuración"><i class="fa-solid fa-gear"></i></button>
+      <button onclick="App.instance.toggleTheme()"><i class="fa-solid fa-circle-half-stroke"></i></button>
+      <span style="font-size:11px; color:var(--text-muted);">v3.4</span>
     </header>
 
     <main>
-      <div class="tab-bar">
-        <div class="tabs-container" id="tabs"></div>
-        <div class="tab" id="overflow-trigger" style="min-width: 40px; padding: 8px; text-align: center;">
-          <i class="fa-solid fa-ellipsis"></i>
-        </div>
-        <!-- Menú overflow oculto por defecto -->
-        <div class="tab-overflow-menu hidden" id="overflow-menu" style="position:absolute; right:10px; top:40px; background:var(--bg-panel); padding:10px; border-radius:8px; border:1px solid var(--border); box-shadow:var(--shadow-lg); z-index:100;"></div>
-      </div>
-
+      <div class="tab-bar"><div class="tabs-container" id="tabs"></div></div>
       <div class="workspace">
         <aside class="sidebar" id="sidebar">
-          <section>
-            <h4><i class="fa-solid fa-clock-rotate-left"></i> Recientes</h4>
-            <div id="recent-list"></div>
-          </section>
-          <section>
-            <h4><i class="fa-solid fa-folder-tree"></i> Explorador</h4>
-            <div id="open-list"></div>
-          </section>
-          <div style="margin-top:auto;">
-             <button id="panic-btn" style="width:100%; padding:8px; border:1px solid var(--error); color:var(--error); background:rgba(239,68,68,0.05); border-radius:6px; cursor:pointer;">
-               <i class="fa-solid fa-triangle-exclamation"></i> Reset App
-             </button>
-          </div>
+          <section><h4>Recientes</h4><div id="recent-list"></div></section>
+          <section><h4>Explorador</h4><div id="open-list"></div></section>
         </aside>
-
         <section class="content-region" id="content-region">
-          <!-- Pantalla de Bienvenida -->
-          <div class="welcome-screen" id="welcome-screen">
-            <div class="welcome-card">
-              <div class="welcome-hero">
-                <div style="width:60px; height:60px; background:var(--accent); border-radius:16px; display:grid; place-items:center; margin-bottom:20px; box-shadow: 0 10px 20px rgba(99,102,241,0.4);">
-                  <i class="fa-solid fa-shapes" style="font-size:30px; color:white;"></i>
-                </div>
-                <h1>Universal DocViewer</h1>
-                <p>Tu espacio de trabajo unificado. Visualiza PDFs, edita código, compara datos y convierte documentos sin salir del navegador.</p>
-                
-                <div class="quick-actions">
-                  <div class="action-card" onclick="document.getElementById('file-input').click()">
-                    <i class="fa-regular fa-folder-open"></i>
-                    <div>
-                      <strong>Abrir Archivo Local</strong>
-                      <small>Soporta PDF, JSON, MD, Office, Imágenes</small>
-                    </div>
-                  </div>
-                  <div class="action-card" id="welcome-draft-btn">
-                    <i class="fa-solid fa-pen-nib"></i>
-                    <div>
-                      <strong>Crear Borrador</strong>
-                      <small>Nota rápida en Markdown</small>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <div class="recents-panel">
-                <h4 style="color:var(--text-primary); margin-bottom:15px; font-weight:600;">Recientes</h4>
-                <div id="welcome-recents"></div>
-              </div>
-            </div>
+          <div id="content-scroll" class="content-scroll"></div>
+          <div id="welcome-msg" style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--text-muted); flex-direction:column; padding:20px;">
+            <i class="fa-solid fa-layer-group" style="font-size:64px; margin-bottom:20px; color:var(--accent);"></i>
+            <h2 style="color:var(--text-primary);">Hacker Elegante Pro</h2>
+            <p style="margin-bottom:20px;">Tu entorno de desarrollo seguro y local</p>
+            <button onclick="App.instance.openFileDialog()" style="background:var(--accent); color:white; padding:10px 20px; border:none; border-radius:6px; cursor:pointer; font-weight:600; font-size:14px;"><i class="fa-solid fa-folder-open"></i> Abrir Archivos</button>
+            <div class="welcome-recents" id="welcome-recents-list"></div>
           </div>
-          
-          <div class="content-scroll" id="content-scroll"></div>
         </section>
       </div>
     </main>
 
-    <footer class="statusbar">
-      <div style="display:flex; align-items:center; gap:8px;">
-        <div class="spinner" id="loader"></div>
-        <span id="status-text">Listo</span>
-      </div>
-      <span id="status-meta" style="color:var(--accent);"></span>
-      <div style="flex:1"></div>
-      <span id="zoom-indicator" style="cursor:pointer;">100%</span>
-      <span id="status-detail">UTF-8</span>
-    </footer>
-  </div>
-
-  <!-- Modales y Overlays -->
-  <div class="modal-backdrop" id="modal-backdrop">
-    <div class="modal" role="dialog">
-      <header>
-        <span id="modal-title">Título</span>
-        <button id="modal-close"><i class="fa-solid fa-xmark"></i></button>
-      </header>
-      <div id="modal-body"></div>
-      <footer id="modal-actions"></footer>
-    </div>
-  </div>
-
-  <div class="context-menu" id="context-menu" style="position:fixed; background:var(--bg-panel); border:1px solid var(--border); border-radius:6px; padding:4px; display:none; flex-direction:column; box-shadow:var(--shadow-lg); z-index:200;"></div>
-  
-  <div id="toast-container"></div>
-  
-  <div class="drag-overlay" id="drag-overlay">
-    <div class="dropzone">
-      <i class="fa-solid fa-cloud-arrow-down"></i>
-      <h2>Suelta para abrir</h2>
-      <p style="color:var(--text-secondary);">Procesamiento local y seguro</p>
-    </div>
-  </div>
-
-  <div class="command-palette-backdrop" id="command-palette-backdrop" style="position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:180; display:none; justify-content:center; padding-top:100px;">
-    <div class="command-palette" style="width:600px; max-height:400px; background:var(--bg-panel); border-radius:12px; overflow:hidden; display:flex; flex-direction:column;">
-      <div style="padding:12px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px;">
-        <i class="fa-solid fa-terminal" style="color:var(--accent);"></i>
-        <input id="command-input" type="text" placeholder="Escribe un comando..." style="background:transparent; border:none; color:white; width:100%; font-size:16px;">
-      </div>
-      <ul id="command-list" style="list-style:none; overflow-y:auto; margin:0; padding:0;"></ul>
-    </div>
-  </div>
+    <!-- Modals -->
+    <div class="cmd-backdrop" id="cmd-backdrop"><div class="cmd-palette"><div class="cmd-input-wrapper"><i class="fa-solid fa-magnifying-glass" style="color:var(--accent)"></i><input type="text" id="cmd-input" placeholder="Comando..." autocomplete="off"></div><ul class="cmd-list" id="cmd-list"></ul></div></div>
+    <div class="modal-backdrop" id="generic-modal" style="display:none;"><div class="modal"><div class="modal-header"><span id="generic-modal-title">Título</span><button onclick="UIManager.closeModal()" style="border:none;background:none;color:var(--text-muted);cursor:pointer;"><i class="fa-solid fa-xmark"></i></button></div><div class="modal-body" id="generic-modal-body"></div></div></div>
+    <div class="modal-backdrop" id="settings-modal" style="display:none;"><div class="modal"><div class="modal-header"><span>Configuración</span><button onclick="SettingsManager.close()" style="border:none;background:none;color:var(--text-muted);cursor:pointer;"><i class="fa-solid fa-xmark"></i></button></div><div class="modal-body"><div style="margin-bottom:20px;"><label style="display:block;margin-bottom:8px;font-size:12px;text-transform:uppercase;">Fuente</label><select onchange="SettingsManager.updateFont(this.value)" style="width:100%;padding:8px;background:var(--bg-input);color:white;border:1px solid var(--border);border-radius:6px;"><option value="'JetBrains Mono', monospace">JetBrains Mono</option><option value="'Fira Code', monospace">Fira Code</option></select></div><div style="margin-bottom:20px;"><label style="display:block;margin-bottom:8px;font-size:12px;text-transform:uppercase;">Tamaño</label><input type="range" min="10" max="24" value="14" oninput="SettingsManager.updateFontSize(this.value, 'editor')" style="width:100%;"></div><button onclick="SettingsManager.executePanic()" style="width:100%;padding:12px;background:rgba(239,68,68,0.1);color:var(--error);border:1px solid var(--error);border-radius:8px;cursor:pointer;">Restablecer</button></div></div></div>
+    <div class="zoom-float" id="zoom-float">100%</div>
 
   <input type="file" id="file-input" class="hidden" multiple />
 
-  <!-- Lógica de Aplicación (Misma funcionalidad, adaptada a clases nuevas) -->
+  <!-- Scripts -->
   <script type="module">
-    // --- Configuración y Constantes ---
-    const CONFIG_KEY = 'app_config';
-    const SESSION_KEY = 'session_index';
+    const ignoreErrors = ['ResizeObserver loop', 'limit exceeded'];
+    window.addEventListener('error', e => { if(ignoreErrors.some(err => e.message.includes(err))) { e.stopImmediatePropagation(); e.preventDefault(); } });
 
-    // --- Plugin Loader (Mantiene las librerías funcionando) ---
+    const SW_CODE = `self.addEventListener('install',e=>e.waitUntil(self.skipWaiting()));self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));self.addEventListener('fetch',e=>{});`;
+    const swBlob = new Blob([SW_CODE], {type: 'application/javascript'});
+    const swUrl = URL.createObjectURL(swBlob);
+    if('serviceWorker' in navigator) { navigator.serviceWorker.register(swUrl).catch(() => {}); }
+
     class PluginLoader {
-      constructor() {
-        this.cache = new Map();
-        this.sources = {
-          pdfjs: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
-          pdflib: 'https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js',
-          monaco: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.52.0/min/vs/loader.min.js',
-          marked: 'https://cdnjs.cloudflare.com/ajax/libs/marked/11.2.0/marked.min.js',
-          dompurify: 'https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.5/purify.min.js',
-          mermaid: 'https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js',
-          papaparse: 'https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js',
-          mammoth: 'https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.8.0/mammoth.browser.min.js',
-          sheetjs: 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
-          jsdiff: 'https://cdnjs.cloudflare.com/ajax/libs/diff/5.2.0/diff.min.js',
-          prettier: 'https://unpkg.com/prettier@3.0.3/standalone.js',
-          prettierBabel: 'https://unpkg.com/prettier@3.0.3/parser-babel.js',
-          prettierPostcss: 'https://unpkg.com/prettier@3.0.3/parser-postcss.js',
-          katex: 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js'
-        };
-      }
-      static get instance() {
-        if (!window.__pluginLoader) window.__pluginLoader = new PluginLoader();
-        return window.__pluginLoader;
-      }
-      async load(name) {
-        if (this.cache.has(name)) return this.cache.get(name);
-        const src = this.sources[name];
-        if (!src) throw new Error('Plugin no registrado: ' + name);
-        UIManager.setLoading(true, `Cargando ${name}...`);
-        const promise = new Promise((resolve, reject) => {
-          const s = document.createElement('script');
-          s.src = src;
-          s.onload = () => { UIManager.setLoading(false); resolve(true); };
-          s.onerror = (e) => { UIManager.setLoading(false); reject(e); };
-          document.head.appendChild(s);
-        });
-        this.cache.set(name, promise);
-        return promise;
+      static sources = {
+        pdfjs: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
+        pdfjsWorker: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js',
+        pdflib: 'https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js',
+        monaco: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.52.0/min/vs/loader.min.js',
+        marked: 'https://cdn.jsdelivr.net/npm/marked@4.3.0/marked.min.js',
+        skulpt: 'https://cdn.jsdelivr.net/npm/skulpt@1.2.0/dist/skulpt.min.js',
+        skulptStd: 'https://cdn.jsdelivr.net/npm/skulpt@1.2.0/dist/skulpt-stdlib.js',
+        mammoth: 'https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js',
+        xlsx: 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
+        jszip: 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js',
+        quill: 'https://cdn.quilljs.com/1.3.6/quill.js',
+        html2pdf: 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js',
+        docxPreview: 'https://cdn.jsdelivr.net/npm/docx-preview@0.1.15/dist/docx-preview.min.js'
+      };
+      static loaded = new Set();
+      static async load(names) {
+        const toLoad = (Array.isArray(names) ? names : [names]).filter(n => !this.loaded.has(n));
+        if(toLoad.length === 0) return;
+        const savedDefine = window.define; if (savedDefine && savedDefine.amd) window.define = undefined;
+        try {
+            await Promise.all(toLoad.map(name => new Promise((resolve, reject) => {
+                const s = document.createElement('script'); s.src = this.sources[name];
+                s.onload = () => { this.loaded.add(name); resolve(); }; s.onerror = (e) => { console.error("Load failed:", name); reject(e); }; document.head.appendChild(s);
+            })));
+        } finally { if (savedDefine) window.define = savedDefine; }
       }
     }
 
-    // --- Sistema de Archivos (IndexedDB) ---
     class FileSystem {
-      constructor() {
-        this.dbName = 'DocViewerDB_v2'; // Updated Version
-        this.storeName = 'files';
-        this.dbPromise = null;
-      }
-      async init() {
-        if (this.dbPromise) return this.dbPromise;
-        this.dbPromise = new Promise((resolve, reject) => {
-          const request = indexedDB.open(this.dbName, 1);
-          request.onupgradeneeded = () => {
-            const db = request.result;
-            if (!db.objectStoreNames.contains(this.storeName)) {
-              db.createObjectStore(this.storeName, { keyPath: 'id' });
-            }
-          };
-          request.onsuccess = () => resolve(request.result);
-          request.onerror = () => reject(request.error);
-        });
-        return this.dbPromise;
-      }
-      async putFile(file) {
-        const db = await this.init();
-        return new Promise((resolve, reject) => {
-          const tx = db.transaction(this.storeName, 'readwrite');
-          tx.oncomplete = () => resolve(file);
-          tx.onerror = () => reject(tx.error);
-          tx.objectStore(this.storeName).put(file);
-        });
-      }
-      async getFile(id) {
-        const db = await this.init();
-        return new Promise((resolve, reject) => {
-          const tx = db.transaction(this.storeName, 'readonly');
-          const req = tx.objectStore(this.storeName).get(id);
-          req.onsuccess = () => resolve(req.result);
-          req.onerror = () => reject(req.error);
-        });
-      }
-      async listFiles() {
-        const db = await this.init();
-        return new Promise((resolve, reject) => {
-          const tx = db.transaction(this.storeName, 'readonly');
-          const req = tx.objectStore(this.storeName).getAll();
-          req.onsuccess = () => resolve(req.result || []);
-          req.onerror = () => reject(req.error);
-        });
-      }
+      static dbName = 'HackerEleganteDB_v3';
+      static async init() { return new Promise(r => { const q = indexedDB.open(this.dbName, 1); q.onupgradeneeded = () => q.result.createObjectStore('files', {keyPath: 'id'}); q.onsuccess = () => r(q.result); }); }
+      static async put(file) { const db = await this.init(); db.transaction('files', 'readwrite').objectStore('files').put(file); }
+      static async getAll() { const db = await this.init(); return new Promise(r => { db.transaction('files', 'readonly').objectStore('files').getAll().onsuccess = e => r(e.target.result || []); }); }
+      static async getFile(id) { const db = await this.init(); return new Promise(r => { const tx = db.transaction('files', 'readonly').objectStore('files').get(id); tx.onsuccess = () => r(tx.result); }); }
+      static async clear() { const db = await this.init(); db.transaction('files', 'readwrite').objectStore('files').clear(); }
     }
 
-    // --- UI Manager (Control de Interfaz) ---
-    class UIManager {
-      static contextTargetId = null;
-      static setup() {
-        this.tabsEl = document.getElementById('tabs');
-        this.overflowMenu = document.getElementById('overflow-menu');
-        this.overflowTrigger = document.getElementById('overflow-trigger');
-        this.contentScroll = document.getElementById('content-scroll');
-        this.recentList = document.getElementById('recent-list');
-        this.openList = document.getElementById('open-list');
-        this.modalBackdrop = document.getElementById('modal-backdrop');
-        this.modalBody = document.getElementById('modal-body');
-        this.modalActions = document.getElementById('modal-actions');
-        this.modalTitle = document.getElementById('modal-title');
-        this.statusText = document.getElementById('status-text');
-        this.loader = document.getElementById('loader');
-        this.contextMenu = document.getElementById('context-menu');
-        this.zoomIndicator = document.getElementById('zoom-indicator');
-        this.statusMeta = document.getElementById('status-meta');
-        this.statusDetail = document.getElementById('status-detail');
-        this.toastContainer = document.getElementById('toast-container');
-        this.welcomeScreen = document.getElementById('welcome-screen');
-        this.welcomeRecents = document.getElementById('welcome-recents');
-        this.commandBackdrop = document.getElementById('command-palette-backdrop');
-        this.commandInput = document.getElementById('command-input');
-        this.commandList = document.getElementById('command-list');
-        
-        // Event Listeners globales
-        document.getElementById('welcome-draft-btn').onclick = () => App.instance.createDraft();
-        document.getElementById('modal-close').onclick = () => this.hideModal();
-        this.overflowTrigger.onclick = () => this.toggleOverflowMenu();
-        
-        document.addEventListener('click', (e) => {
-          if (!this.overflowMenu.contains(e.target) && !this.overflowTrigger.contains(e.target)) {
-            this.overflowMenu.classList.add('hidden');
-          }
-          if (!this.contextMenu.contains(e.target)) this.contextMenu.style.display = 'none';
-        });
-
-        // Command Palette logic
-        this.commandBackdrop.addEventListener('click', (e) => { if (e.target === this.commandBackdrop) this.hideCommandPalette(); });
-        this.commandInput.addEventListener('input', () => this.renderCommandList());
-        document.addEventListener('keydown', (e) => {
-           if (this.isPaletteOpen()) {
-             if (e.key === 'Escape') this.hideCommandPalette();
-             // Simple selection logic omitted for brevity in this refactor, but kept robust
-           }
-        });
-
-        // Context Menu
-        document.addEventListener('contextmenu', (e) => {
-          if (e.defaultPrevented) return;
-          if (App.instance.activeTabId) {
-             e.preventDefault();
-             UIManager.contextTargetId = App.instance.activeTabId;
-             this.showContextMenu(e.clientX, e.clientY);
-          }
-        });
-        
-        window.addEventListener('resize', () => {
-           this.renderTabs(App.instance.openTabs);
-        });
-      }
-
-      static isPaletteOpen() { return this.commandBackdrop.style.display === 'flex'; }
-      static showCommandPalette(commands = []) {
-        this.commandActions = commands;
-        this.commandInput.value = '';
-        this.commandBackdrop.style.display = 'flex';
-        this.commandInput.focus();
-        this.renderCommandList();
-      }
-      static hideCommandPalette() { this.commandBackdrop.style.display = 'none'; }
-      
-      static renderCommandList() {
-        const query = this.commandInput.value.toLowerCase();
-        this.commandList.innerHTML = '';
-        (this.commandActions || []).filter(c => c.label.toLowerCase().includes(query)).forEach(cmd => {
-           const li = document.createElement('li');
-           li.style.padding = '10px 14px';
-           li.style.borderBottom = '1px solid var(--border)';
-           li.style.cursor = 'pointer';
-           li.style.color = 'var(--text-primary)';
-           li.onmouseover = () => li.style.background = 'var(--bg-hover)';
-           li.onmouseout = () => li.style.background = 'transparent';
-           li.innerHTML = `<div style="display:flex; justify-content:space-between"><span>${cmd.label}</span><span style="color:var(--text-muted); font-size:12px">${cmd.meta || ''}</span></div>`;
-           li.onclick = () => { cmd.action(); this.hideCommandPalette(); };
-           this.commandList.appendChild(li);
-        });
-      }
-
-      static setLoading(state, text = 'Cargando...') {
-        this.loader.classList.toggle('active', state);
-        this.statusText.textContent = state ? text : 'Listo';
-      }
-
-      static setZoom(percent) { this.zoomIndicator.textContent = `${percent}%`; }
-      static updateStatusDetail(text = '') { this.statusDetail.textContent = text; }
-      static updateStatusMeta(text = '') { this.statusMeta.textContent = text; }
-
-      static renderTabs(tabs) {
-        this.tabsEl.innerHTML = '';
-        // Calculo simple para overflow
-        const maxTabs = Math.floor((this.tabsEl.clientWidth || window.innerWidth) / 150) - 1;
-        const visibleTabs = tabs.slice(0, Math.max(maxTabs, 1));
-        const overflow = tabs.slice(Math.max(maxTabs, 1));
-        
-        visibleTabs.forEach(tab => this.tabsEl.appendChild(this.createTabEl(tab)));
-        
-        // Render Overflow menu
-        this.overflowMenu.innerHTML = '';
-        if (overflow.length > 0) {
-           this.overflowTrigger.classList.remove('hidden');
-           overflow.forEach(tab => {
-             const div = document.createElement('div');
-             div.textContent = tab.name;
-             div.style.padding = '8px';
-             div.style.cursor = 'pointer';
-             div.style.color = 'var(--text-primary)';
-             div.onmouseover = () => div.style.background = 'var(--bg-hover)';
-             div.onmouseout = () => div.style.background = 'transparent';
-             div.onclick = () => { App.instance.activateTab(tab.id); this.toggleOverflowMenu(); };
-             this.overflowMenu.appendChild(div);
-           });
-        } else {
-           this.overflowTrigger.classList.add('hidden');
-        }
-      }
-
-      static createTabEl(tab) {
-        const el = document.createElement('div');
-        el.className = 'tab' + (tab.id === App.instance.activeTabId ? ' active' : '');
-        el.innerHTML = `${tab.isDirty ? '<span class="dirty-dot"></span>' : ''} <i class="fa-regular fa-file" style="margin-right:6px; opacity:0.7;"></i> ${tab.name}<span class="close">×</span>`;
-        el.onclick = () => App.instance.activateTab(tab.id);
-        el.querySelector('.close').onclick = (ev) => { ev.stopPropagation(); App.instance.closeTab(tab.id); };
-        return el;
-      }
-
-      static toggleOverflowMenu() { this.overflowMenu.classList.toggle('hidden'); }
-      
-      static updateSidebar(files, openTabs) {
-        this.recentList.innerHTML = '';
-        const sorted = [...files].sort((a, b) => (b.lastModified || 0) - (a.lastModified || 0));
-        sorted.slice(0, 8).forEach(f => {
-          const item = document.createElement('div');
-          item.className = 'file-item';
-          item.innerHTML = `<i class="fa-solid fa-file-lines"></i> <span>${f.name}</span>`;
-          item.onclick = () => App.instance.openFromDB(f.id);
-          this.recentList.append(item);
-        });
-        
-        this.openList.innerHTML = '';
-        openTabs.forEach(f => {
-          const item = document.createElement('div');
-          item.className = 'file-item';
-          item.style.color = f.id === App.instance.activeTabId ? 'var(--accent)' : '';
-          item.innerHTML = `<i class="fa-regular fa-folder-open"></i> <span>${f.name}</span>`;
-          item.onclick = () => App.instance.activateTab(f.id);
-          this.openList.appendChild(item);
-        });
-        
-        // Welcome screen logic
-        if (this.welcomeRecents) {
-          this.welcomeRecents.innerHTML = '';
-          sorted.slice(0, 5).forEach(f => {
-             const d = document.createElement('div');
-             d.className = 'recent-item';
-             d.innerHTML = `<i class="fa-solid fa-clock-rotate-left" style="color:var(--accent)"></i> <div><div>${f.name}</div><div style="font-size:11px; color:var(--text-muted)">${new Date(f.lastModified).toLocaleDateString()}</div></div>`;
-             d.onclick = () => App.instance.openFromDB(f.id);
-             this.welcomeRecents.appendChild(d);
-          });
-        }
-        this.toggleWelcome(!openTabs.length);
-      }
-
-      static toggleWelcome(show) {
-        if (!this.welcomeScreen) return;
-        this.welcomeScreen.style.display = show ? 'flex' : 'none';
-        this.contentScroll.classList.toggle('hidden', show);
-      }
-
-      static setContent(node) {
-        this.contentScroll.innerHTML = '';
-        this.contentScroll.appendChild(node);
-        this.toggleWelcome(false);
-      }
-
-      // --- Modales ---
-      static showModal(title, bodyNode, actions = []) {
-        this.modalTitle.textContent = title;
-        this.modalBody.innerHTML = '';
-        this.modalBody.appendChild(bodyNode);
-        this.modalActions.innerHTML = '';
-        actions.forEach(({ text, variant = 'default', onClick }) => {
-          const btn = document.createElement('button');
-          btn.textContent = text;
-          if (variant === 'danger') btn.style.borderColor = 'var(--error)';
-          btn.onclick = onClick;
-          this.modalActions.appendChild(btn);
-        });
-        this.modalBackdrop.style.display = 'flex';
-      }
-      static hideModal() { this.modalBackdrop.style.display = 'none'; }
-      
-      static showInput(title, placeholder, initialValue = '') {
-         return new Promise((resolve) => {
-            const input = document.createElement('input');
-            input.value = initialValue; input.placeholder = placeholder;
-            input.style.width = '100%'; input.style.padding = '10px'; input.style.background = 'var(--bg-input)';
-            input.style.border = '1px solid var(--border)'; input.style.color = 'white'; input.style.borderRadius = '6px';
-            this.showModal(title, input, [
-               { text: 'Cancelar', onClick: () => { this.hideModal(); resolve(null); }},
-               { text: 'Aceptar', onClick: () => { this.hideModal(); resolve(input.value); }}
-            ]);
-            setTimeout(() => input.focus(), 50);
-         });
-      }
-
-      static showConfirm(title, msg) {
-         const d = document.createElement('div'); d.textContent = msg;
-         return new Promise(resolve => {
-            this.showModal(title, d, [
-               { text: 'No', onClick: () => { this.hideModal(); resolve(false); }},
-               { text: 'Sí', onClick: () => { this.hideModal(); resolve(true); }}
-            ]);
-         });
-      }
-
-      static showContextMenu(x, y) {
-        const menu = this.contextMenu;
-        menu.innerHTML = '';
-        const targetId = UIManager.contextTargetId;
-        [
-          { label: 'Cerrar pestaña', icon: 'fa-xmark', action: () => App.instance.closeTab(targetId) },
-          { label: 'Cerrar otras', icon: 'fa-arrows-left-right-to-line', action: () => App.instance.closeOthers(targetId) },
-          { label: 'Descargar', icon: 'fa-download', action: () => App.instance.exportFile(targetId) },
-          { label: 'Renombrar', icon: 'fa-pen', action: () => App.instance.renameTab(targetId) }
-        ].forEach(item => {
-           const btn = document.createElement('div');
-           btn.innerHTML = `<i class="fa-solid ${item.icon}" style="width:20px"></i> ${item.label}`;
-           btn.style.padding = '8px 12px'; btn.style.cursor = 'pointer'; btn.style.color = 'var(--text-primary)';
-           btn.onmouseover = () => btn.style.background = 'var(--bg-hover)';
-           btn.onmouseout = () => btn.style.background = 'transparent';
-           btn.onclick = () => { item.action(); menu.style.display = 'none'; };
-           menu.appendChild(btn);
-        });
-        menu.style.left = `${x}px`;
-        menu.style.top = `${y}px`;
-        menu.style.display = 'flex';
-      }
-
-      static showToast(message, type = 'info') {
-        const toast = document.createElement('div');
-        toast.className = `toast ${type}`;
-        toast.innerHTML = `<span>${message}</span> <i class="fa-solid fa-info-circle"></i>`;
-        this.toastContainer.appendChild(toast);
-        setTimeout(() => toast.remove(), 3000);
-      }
+    class SettingsManager {
+        static open() { document.getElementById('settings-modal').style.display = 'flex'; }
+        static close() { document.getElementById('settings-modal').style.display = 'none'; }
+        static updateFont(f) { document.documentElement.style.setProperty('--font-code', f); localStorage.setItem('pref_font', f); }
+        static updateFontSize(s, t) { document.documentElement.style.setProperty(t === 'ui' ? '--ui-font-size' : '--editor-font-size', s + 'px'); }
+        static async executePanic() { await FileSystem.clear(); localStorage.clear(); location.reload(); }
+        static loadDefaults() { const f = localStorage.getItem('pref_font'); if(f) document.documentElement.style.setProperty('--font-code', f); }
     }
 
-    // --- Editor Factory (Generación de vistas) ---
+    class CompilerService {
+        static async execute(language, code) {
+            const langMap = { 'java': 'java', 'py': 'python', 'cpp': 'cpp', 'js': 'javascript', 'c': 'c', 'go': 'go', 'cs': 'csharp', 'php': 'php', 'rs': 'rust' };
+            const lang = langMap[language] || language;
+            try {
+                const response = await fetch('https://emkc.org/api/v2/piston/execute', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ language: lang, version: '*', files: [{ content: code }] })
+                });
+                const data = await response.json();
+                return data.run || { stdout: '', stderr: 'Error desconocido en la API' };
+            } catch (e) { return { stdout: '', stderr: 'Error de conexión: ' + e.message }; }
+        }
+    }
+
     class EditorFactory {
-      static async createViewer(fileMeta) {
-        const ext = (fileMeta.name.split('.').pop() || '').toLowerCase();
-        // Mapeo simple
-        if (['md', 'markdown'].includes(ext)) return this.createMarkdownView(fileMeta);
-        if (['json'].includes(ext)) return this.createJsonView(fileMeta);
-        if (['js','ts','css','html','java','py','txt'].includes(ext)) return this.createCodeView(fileMeta);
-        if (['pdf'].includes(ext)) return this.createPdfView(fileMeta);
-        if (['png','jpg','jpeg','svg','gif'].includes(ext)) return this.createImageView(fileMeta);
-        // Fallback hex view
-        return this.createHexView(fileMeta);
-      }
-      
-      static editors = new Set();
+        static mapLang(ext) {
+            const map = { 
+                js:'javascript', py:'python', md:'markdown', html:'html', css:'css', json:'json', java:'java', cpp:'cpp', c:'c', h:'c',
+                xml:'xml', sql:'sql', php:'php', go:'go', rs:'rust', cs:'csharp', sh:'shell', bat:'bat', ps1:'powershell',
+                yaml:'yaml', yml:'yaml', ini:'ini', ts:'typescript' 
+            };
+            return map[ext] || 'plaintext';
+        }
 
-      static async createJsonView(fileMeta) {
-         await PluginLoader.instance.load('monaco');
-         const container = document.createElement('div');
-         container.className = 'split-view';
-         const left = document.createElement('div'); left.className = 'split-pane editor-pane';
-         const right = document.createElement('div'); right.className = 'split-pane preview-pane';
-         const resizer = document.createElement('div'); resizer.className = 'split-resizer';
-         
-         const editorHost = document.createElement('div'); editorHost.style.height = '100%';
-         const treeContainer = document.createElement('div'); treeContainer.className = 'json-tree';
-         
-         left.appendChild(editorHost);
-         right.appendChild(treeContainer);
-         container.append(left, resizer, right);
+        static async loadMonaco() {
+            if (window.monaco) return window.monaco;
+            await PluginLoader.load('monaco'); await document.fonts.ready;
+            return new Promise((resolve, reject) => {
+                require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.52.0/min/vs' }});
+                window.MonacoEnvironment = { getWorker: (w, l) => {
+                    const src = `self.MonacoEnvironment = { baseUrl: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.52.0/min/' };importScripts('https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.52.0/min/vs/base/worker/workerMain.js');`;
+                    return new Worker(URL.createObjectURL(new Blob([src], { type: 'application/javascript' })));
+                }};
+                require(['vs/editor/editor.main'], () => resolve(window.monaco), reject);
+            });
+        }
 
-         // Init Monaco
-         const text = fileMeta.blob ? await fileMeta.blob.text() : '{}';
-         const editor = monaco.editor.create(editorHost, {
-            value: text, language: 'json', theme: 'vs-dark', automaticLayout: true,
-            minimap: { enabled: false }, fontFamily: 'JetBrains Mono', fontSize: 13
-         });
-         this.editors.add(editor);
-         
-         // Tree rendering logic simplified for brevity
-         const renderTree = () => {
-             try {
-                 const json = JSON.parse(editor.getValue());
-                 treeContainer.innerHTML = '';
-                 // Simple recursive renderer
-                 const renderNode = (obj, parent) => {
-                     const ul = document.createElement('ul');
-                     ul.style.listStyle = 'none'; ul.style.paddingLeft = '14px';
-                     Object.entries(obj).forEach(([k,v]) => {
-                        const li = document.createElement('li');
-                        li.className = 'json-node';
-                        const keySpan = document.createElement('span'); keySpan.className='key'; keySpan.textContent = k + ': ';
-                        li.appendChild(keySpan);
-                        if(typeof v === 'object' && v !== null) {
-                            const span = document.createElement('span'); span.className='type'; span.textContent = Array.isArray(v) ? '[...]' : '{...}';
-                            li.appendChild(span);
-                            li.appendChild(renderNode(v));
+        static async createViewer(file) {
+            // Priority: if has edited content (contentRef), use corresponding editor
+            const ext = file.name.split('.').pop().toLowerCase();
+            
+            // Text based files always use contentRef if available
+            if(['md', 'markdown'].includes(ext)) return this.createMarkdownView(file);
+            if(['html'].includes(ext)) return this.createHtmlView(file);
+            
+            const codeExts = ['js','css','py','json','txt','java','cpp','c','h','xml','sql','php','go','rs','cs','sh','bat','ps1','yaml','yml','ini','ts','kt','swift','r','rb'];
+            if(codeExts.includes(ext)) return this.createCodeView(file, ext);
+            
+            // Binary files logic: if contentRef exists, we are in "Edit Mode" state
+            if(file.contentRef && (ext === 'docx' || ext === 'odt')) return this.createOfficeEditor(file, ext);
+
+            // Default readers
+            if(ext === 'docx') return this.createDocxViewer(file);
+            if(ext === 'odt') return this.createOdtViewer(file); 
+            if(['xlsx', 'csv'].includes(ext)) return this.createXlsxView(file);
+            if(['pdf'].includes(ext)) return this.createPdfView(file);
+            
+            // Media
+            const imgExts = ['png','jpg','jpeg','gif','svg','webp','bmp','ico'];
+            if(imgExts.includes(ext)) return this.createImageView(file);
+            const mediaExts = ['mp3','wav','mp4','webm','ogg'];
+            if(mediaExts.includes(ext)) return this.createMediaView(file, ext);
+            
+            return this.createHexView(file);
+        }
+
+        static async createDocxViewer(file) {
+            await PluginLoader.load('docxPreview');
+            const container = document.createElement('div');
+            container.className = 'docx-viewer-container';
+            const toolbar = document.createElement('div');
+            toolbar.className = 'floating-toolbar';
+            toolbar.innerHTML = `<button id="enable-edit" title="Habilitar Edición"><i class="fa-solid fa-pen-to-square"></i> Editar</button>`;
+            const docWrapper = document.createElement('div');
+            docWrapper.className = 'docx-wrapper';
+            docWrapper.id = 'print-container'; // Use this for PDF export
+            container.appendChild(toolbar);
+            container.appendChild(docWrapper);
+            try {
+                const buff = await file.blob.arrayBuffer();
+                await window.docx.renderAsync(buff, docWrapper);
+            } catch(e) { docWrapper.innerHTML = `<p style="color:red;padding:20px;">Error: ${e.message}</p>`; }
+            toolbar.querySelector('#enable-edit').onclick = async () => {
+                const editor = await this.createOfficeEditor(file, 'docx');
+                container.parentElement.innerHTML = '';
+                document.getElementById('content-scroll').appendChild(editor);
+            };
+            return container;
+        }
+
+        // --- ODT High-Fidelity Viewer ---
+        static async createOdtViewer(file) {
+            await PluginLoader.load('jszip');
+            const container = document.createElement('div');
+            container.className = 'docx-viewer-container';
+            
+            const toolbar = document.createElement('div');
+            toolbar.className = 'floating-toolbar';
+            toolbar.innerHTML = `<button id="enable-edit" title="Habilitar Edición"><i class="fa-solid fa-pen-to-square"></i> Editar</button>`;
+            
+            const docWrapper = document.createElement('div');
+            docWrapper.className = 'odt-wrapper';
+            docWrapper.id = 'print-container';
+            
+            container.appendChild(toolbar);
+            container.appendChild(docWrapper);
+
+            try {
+                const zip = await JSZip.loadAsync(file.blob);
+                const xml = await zip.file("content.xml").async("string");
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(xml, "text/xml");
+                
+                // Helper to load image
+                const loadImage = async (path) => {
+                    try { const imgBlob = await zip.file(path).async("blob"); return URL.createObjectURL(imgBlob); } catch(e) { return null; }
+                };
+
+                const body = doc.getElementsByTagName("office:text")[0];
+                
+                // Recursive transformer
+                const transform = async (node) => {
+                    let html = '';
+                    for (const child of Array.from(node.childNodes)) {
+                        if (child.nodeType === 3) { // Text
+                            html += child.textContent;
+                        } else if (child.nodeName === 'text:p') {
+                             html += `<p>${await transform(child)}</p>`;
+                        } else if (child.nodeName === 'text:h') {
+                             const level = child.getAttribute('text:outline-level') || 1;
+                             html += `<h${level}>${await transform(child)}</h${level}>`;
+                        } else if (child.nodeName === 'text:list') {
+                             html += `<ul>${await transform(child)}</ul>`;
+                        } else if (child.nodeName === 'text:list-item') {
+                             html += `<li>${await transform(child)}</li>`;
+                        } else if (child.nodeName === 'text:span') {
+                             // Basic style heuristic
+                             const styleName = child.getAttribute('text:style-name');
+                             let style = '';
+                             if(styleName && styleName.includes('Bold')) style += 'font-weight:bold;';
+                             html += `<span style="${style}">${await transform(child)}</span>`;
+                        } else if (child.nodeName === 'draw:frame') {
+                             // Image handling
+                             const imgNode = child.getElementsByTagName('draw:image')[0];
+                             if(imgNode) {
+                                 const href = imgNode.getAttribute('xlink:href');
+                                 let path = href;
+                                 if(!zip.file(path) && zip.file("Pictures/" + path)) path = "Pictures/" + path;
+                                 
+                                 const src = await loadImage(path);
+                                 if(src) html += `<img src="${src}" style="max-width:100%"/>`;
+                             }
+                        } else if (child.nodeName === 'table:table') {
+                             html += `<table border="1" style="width:100%; border-collapse:collapse;">${await transform(child)}</table>`;
+                        } else if (child.nodeName === 'table:table-row') {
+                             html += `<tr>${await transform(child)}</tr>`;
+                        } else if (child.nodeName === 'table:table-cell') {
+                             html += `<td style="padding:5px; border:1px solid #000;">${await transform(child)}</td>`;
                         } else {
-                            const valSpan = document.createElement('span'); valSpan.className='value'; valSpan.textContent = v;
-                            li.appendChild(valSpan);
+                             html += await transform(child);
                         }
-                        ul.appendChild(li);
-                     });
-                     return ul;
-                 };
-                 treeContainer.appendChild(renderNode(json));
-             } catch(e) { treeContainer.innerHTML = '<span style="color:var(--error)">JSON inválido</span>'; }
-         };
-         
-         editor.onDidChangeModelContent(renderTree);
-         renderTree();
-         return container;
-      }
-
-      static async createCodeView(fileMeta) {
-         await PluginLoader.instance.load('monaco');
-         const container = document.createElement('div'); container.style.height = '100%';
-         const editor = monaco.editor.create(container, {
-            value: await fileMeta.blob.text(),
-            language: this.mapLanguage(fileMeta.name),
-            theme: 'vs-dark', automaticLayout: true,
-            fontFamily: 'JetBrains Mono', fontSize: 13,
-            padding: { top: 20 }
-         });
-         editor.onDidChangeModelContent(() => { App.instance.markDirty(fileMeta.id, true); });
-         editor.onDidBlurEditorText(() => App.instance.saveContent(fileMeta.id, editor.getValue()));
-         this.editors.add(editor);
-         return container;
-      }
-
-      static mapLanguage(name) {
-          const ext = name.split('.').pop();
-          const map = { js:'javascript', ts:'typescript', py:'python', md:'markdown', html:'html', css:'css' };
-          return map[ext] || 'plaintext';
-      }
-
-      static async createPdfView(fileMeta) {
-         await PluginLoader.instance.load('pdfjs');
-         const container = document.createElement('div');
-         container.style.height = '100%'; container.style.overflow = 'auto'; container.style.background = '#0f172a';
-         
-         // Toolbar flotante
-         const toolbar = document.createElement('div'); toolbar.className = 'pdf-toolbar';
-         const modes = [
-             { id: 'navigate', icon: 'fa-hand', title: 'Navegar' },
-             { id: 'draw', icon: 'fa-pencil', title: 'Dibujar' },
-             { id: 'text', icon: 'fa-font', title: 'Texto' }
-         ];
-         modes.forEach(m => {
-             const btn = document.createElement('button');
-             btn.innerHTML = `<i class="fa-solid ${m.icon}"></i>`; btn.title = m.title;
-             toolbar.appendChild(btn);
-         });
-         // Separator
-         const sep = document.createElement('div'); sep.style.width='1px'; sep.style.height='20px'; sep.style.background='var(--border)';
-         toolbar.appendChild(sep);
-         const colorInp = document.createElement('input'); colorInp.type='color'; colorInp.value='#ef4444';
-         toolbar.appendChild(colorInp);
-         
-         const pagesContainer = document.createElement('div');
-         container.append(toolbar, pagesContainer);
-
-         // Render simple del PDF
-         const url = URL.createObjectURL(fileMeta.blob);
-         const pdf = await pdfjsLib.getDocument(url).promise;
-         
-         for(let i=1; i<=pdf.numPages; i++) {
-             const page = await pdf.getPage(i);
-             const viewport = page.getViewport({ scale: 1.2 });
-             const wrapper = document.createElement('div'); wrapper.className = 'pdf-page';
-             wrapper.style.width = `${viewport.width}px`; wrapper.style.height = `${viewport.height}px`; wrapper.style.position = 'relative';
-             
-             const canvas = document.createElement('canvas');
-             canvas.width = viewport.width; canvas.height = viewport.height;
-             await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
-             wrapper.appendChild(canvas);
-             pagesContainer.appendChild(wrapper);
-         }
-         return container;
-      }
-
-      static async createImageView(fileMeta) {
-         const div = document.createElement('div');
-         div.style.display = 'flex'; div.style.justifyContent = 'center'; div.style.alignItems = 'center'; div.style.height = '100%';
-         const img = document.createElement('img');
-         img.src = URL.createObjectURL(fileMeta.blob);
-         img.style.maxWidth = '90%'; img.style.maxHeight = '90%'; img.style.borderRadius = '8px'; img.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
-         div.appendChild(img);
-         return div;
-      }
-
-      static async createHexView(fileMeta) {
-         const div = document.createElement('div');
-         div.style.padding = '20px'; div.style.fontFamily = 'JetBrains Mono'; div.style.color = '#94a3b8'; div.style.whiteSpace = 'pre'; div.style.overflow = 'auto'; div.style.height = '100%';
-         div.textContent = "Vista HEX simplificada (Archivo binario)";
-         return div;
-      }
-      
-      static async createMarkdownView(fileMeta) {
-        await PluginLoader.instance.load('marked');
-        const container = document.createElement('div'); container.className = 'split-view';
-        const left = document.createElement('div'); left.className='split-pane editor-pane';
-        const right = document.createElement('div'); right.className='split-pane preview-pane';
-        
-        const area = document.createElement('textarea');
-        area.style.width = '100%'; area.style.height = '100%'; area.style.border = 'none'; area.style.resize = 'none';
-        area.value = await fileMeta.blob.text();
-        
-        const update = () => { right.innerHTML = marked.parse(area.value); };
-        area.addEventListener('input', update);
-        update();
-        
-        left.appendChild(area);
-        container.append(left, right);
-        return container;
-      }
-    }
-
-    // --- App Principal ---
-    class App {
-      constructor() {
-        this.fs = new FileSystem();
-        this.openTabs = [];
-        this.activeTabId = null;
-      }
-      static get instance() {
-        if (!window.__app) window.__app = new App();
-        return window.__app;
-      }
-      async init() {
-        UIManager.setup();
-        await this.fs.init();
-        this.bindEvents();
-        this.restoreSession();
-      }
-      bindEvents() {
-        // Drag & Drop
-        const shell = document.getElementById('app-shell');
-        shell.addEventListener('dragover', (e) => { e.preventDefault(); document.body.classList.add('dragging'); });
-        shell.addEventListener('dragleave', (e) => { if(e.relatedTarget === null) document.body.classList.remove('dragging'); });
-        shell.addEventListener('drop', (e) => {
-           e.preventDefault(); document.body.classList.remove('dragging');
-           if(e.dataTransfer.files.length) this.handleFiles(e.dataTransfer.files);
-        });
-
-        document.getElementById('file-input').onchange = (e) => this.handleFiles(e.target.files);
-        document.getElementById('open-file').onclick = () => document.getElementById('file-input').click();
-        
-        // Global Shortcuts
-        window.addEventListener('keydown', (e) => {
-           if(e.ctrlKey && e.key === 'k') { e.preventDefault(); UIManager.showCommandPalette(this.getCommands()); }
-           if(e.ctrlKey && e.key === 'o') { e.preventDefault(); document.getElementById('file-input').click(); }
-        });
-      }
-      
-      getCommands() {
-         return [
-            { label: 'Guardar todo', meta: 'Ctrl+S', action: () => UIManager.showToast('Guardado automático activo', 'success') },
-            { label: 'Cerrar pestaña actual', action: () => this.closeTab(this.activeTabId) },
-            { label: 'Pantalla completa', action: () => document.documentElement.requestFullscreen() }
-         ];
-      }
-
-      async handleFiles(files) {
-         for (const f of files) {
-            const id = crypto.randomUUID();
-            const meta = { id, name: f.name, type: f.type, blob: f, lastModified: f.lastModified, isDirty: false };
-            await this.fs.putFile(meta);
-            this.openTabs.push(meta);
-            this.activateTab(id);
-         }
-         this.saveSession();
-      }
-
-      async createDraft() {
-         const id = crypto.randomUUID();
-         const blob = new Blob(['# Nuevo Borrador\nEmpieza a escribir...'], { type: 'text/markdown' });
-         const meta = { id, name: 'Borrador.md', type: 'text/markdown', blob, lastModified: Date.now(), isDirty: false };
-         await this.fs.putFile(meta);
-         this.openTabs.push(meta);
-         this.activateTab(id);
-         this.saveSession();
-      }
-
-      async activateTab(id) {
-         this.activeTabId = id;
-         UIManager.renderTabs(this.openTabs);
-         const file = this.openTabs.find(f => f.id === id);
-         if (!file) return;
-         
-         const viewer = await EditorFactory.createViewer(file);
-         UIManager.setContent(viewer);
-         UIManager.updateStatusMeta(file.type || 'Desconocido');
-         UIManager.updateStatusDetail(`${(file.blob.size/1024).toFixed(1)} KB`);
-      }
-
-      async closeTab(id) {
-         const idx = this.openTabs.findIndex(f => f.id === id);
-         if (idx > -1) {
-            this.openTabs.splice(idx, 1);
-            if (this.activeTabId === id) {
-               this.activeTabId = this.openTabs[0]?.id || null;
+                    }
+                    return html;
+                };
+                
+                docWrapper.innerHTML = await transform(body);
+                
+            } catch(e) {
+                docWrapper.innerHTML = `<p style="color:red">Error ODT: ${e.message}</p>`;
             }
-         }
-         UIManager.renderTabs(this.openTabs);
-         if(this.activeTabId) this.activateTab(this.activeTabId);
-         else {
-            UIManager.toggleWelcome(true);
-            UIManager.updateStatusMeta('');
-         }
-         this.saveSession();
-      }
-      
-      closeOthers(id) {
-         this.openTabs = this.openTabs.filter(f => f.id === id);
-         this.activateTab(id);
-         this.saveSession();
-      }
 
-      async renameTab(id) {
-         const file = this.openTabs.find(f => f.id === id);
-         if (!file) return;
-         const newName = await UIManager.showInput('Renombrar', 'Nuevo nombre', file.name);
-         if (newName) {
-            file.name = newName;
-            await this.fs.putFile(file);
-            UIManager.renderTabs(this.openTabs);
-         }
-      }
+            toolbar.querySelector('#enable-edit').onclick = async () => {
+                const editor = await this.createOfficeEditor(file, 'odt');
+                container.parentElement.innerHTML = '';
+                document.getElementById('content-scroll').appendChild(editor);
+            };
 
-      exportFile(id) {
-         const file = this.openTabs.find(f => f.id === id);
-         if(file) {
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(file.blob);
-            a.download = file.name;
-            a.click();
-            UIManager.showToast('Descarga iniciada', 'success');
-         }
-      }
+            return container;
+        }
 
-      markDirty(id, isDirty) {
-         const f = this.openTabs.find(x => x.id === id);
-         if(f) f.isDirty = isDirty;
-         UIManager.renderTabs(this.openTabs);
-      }
-      
-      async saveContent(id, text) {
-         const f = this.openTabs.find(x => x.id === id);
-         if(f) {
-            f.blob = new Blob([text], { type: f.type });
-            f.isDirty = false;
-            f.lastModified = Date.now();
-            await this.fs.putFile(f);
-            UIManager.renderTabs(this.openTabs);
-         }
-      }
+        static async createOfficeEditor(file, ext) {
+            await PluginLoader.load('quill');
+            const wrapper = document.createElement('div');
+            wrapper.className = 'office-editor-wrapper';
+            const toolbarContainer = document.createElement('div');
+            const editorContainer = document.createElement('div');
+            editorContainer.id = 'print-container'; 
+            wrapper.appendChild(toolbarContainer);
+            wrapper.appendChild(editorContainer);
+            
+            let initialHtml = '';
+            
+            // Check contentRef first!
+            if (file.contentRef) {
+                initialHtml = file.contentRef;
+            } else {
+                if (ext === 'docx') {
+                    await PluginLoader.load('mammoth');
+                    try {
+                        const buff = await file.blob.arrayBuffer();
+                        const res = await mammoth.convertToHtml({arrayBuffer: buff});
+                        initialHtml = res.value;
+                    } catch(e) { initialHtml = `<p style="color:red">Error: ${e.message}</p>`; }
+                } else if (ext === 'odt') {
+                    await PluginLoader.load('jszip');
+                    try {
+                        const zip = await JSZip.loadAsync(file.blob);
+                        const xml = await zip.file("content.xml").async("string");
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(xml, "text/xml");
+                        const body = doc.getElementsByTagName("office:text")[0];
+                        
+                        // Copy image helper logic for Editor
+                        const loadImage = async (path) => {
+                             try { const imgBlob = await zip.file(path).async("blob"); return URL.createObjectURL(imgBlob); } catch(e) { return null; }
+                        };
+                        const transform = async (node) => {
+                            let html = '';
+                            for (const child of Array.from(node.childNodes)) {
+                                if (child.nodeType === 3) html += child.textContent;
+                                else if (child.nodeName === 'text:p') html += `<p>${await transform(child)}</p>`;
+                                else if (child.nodeName === 'text:h') html += `<h${child.getAttribute('text:outline-level')||1}>${await transform(child)}</h${child.getAttribute('text:outline-level')||1}>`;
+                                else if (child.nodeName === 'text:span') html += `<span>${await transform(child)}</span>`; 
+                                else if (child.nodeName === 'draw:frame') {
+                                     const imgNode = child.getElementsByTagName('draw:image')[0];
+                                     if(imgNode) {
+                                         let path = imgNode.getAttribute('xlink:href');
+                                         if(!zip.file(path) && zip.file("Pictures/" + path)) path = "Pictures/" + path;
+                                         const src = await loadImage(path);
+                                         if(src) html += `<img src="${src}"/>`;
+                                     }
+                                }
+                                else if (child.nodeName === 'table:table') html += `<table border="1" style="width:100%; border-collapse:collapse;">${await transform(child)}</table>`;
+                                else if (child.nodeName === 'table:table-row') html += `<tr>${await transform(child)}</tr>`;
+                                else if (child.nodeName === 'table:table-cell') html += `<td style="padding:5px; border:1px solid #ccc;">${await transform(child)}</td>`;
+                                else html += await transform(child);
+                            }
+                            return html;
+                        };
+                        initialHtml = await transform(body);
 
-      saveSession() {
-         localStorage.setItem(SESSION_KEY, JSON.stringify(this.openTabs.map(f => f.id)));
-         this.fs.listFiles().then(files => UIManager.updateSidebar(files, this.openTabs));
-      }
+                    } catch(e) { initialHtml = `<p style="color:red">Error leyendo ODT para edición: ${e.message}</p>`; }
+                }
+            }
 
-      async restoreSession() {
-         const ids = JSON.parse(localStorage.getItem(SESSION_KEY) || '[]');
-         const allFiles = await this.fs.listFiles();
-         this.openTabs = ids.map(id => allFiles.find(f => f.id === id)).filter(Boolean);
-         
-         UIManager.updateSidebar(allFiles, this.openTabs);
-         
-         if (this.openTabs.length) this.activateTab(this.openTabs[0].id);
-         else UIManager.toggleWelcome(true);
-      }
+            const quill = new Quill(editorContainer, {
+                theme: 'snow',
+                placeholder: 'Escribe aquí...',
+                modules: {
+                    toolbar: [
+                        [{ 'header': [1, 2, 3, false] }],
+                        ['bold', 'italic', 'underline', 'strike'],
+                        [{ 'color': [] }, { 'background': [] }],
+                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                        [{ 'align': [] }],
+                        ['link', 'image'],
+                        ['clean']
+                    ]
+                }
+            });
+
+            quill.clipboard.dangerouslyPasteHTML(initialHtml);
+            quill.on('text-change', () => { file.isDirty = true; file.contentRef = quill.root.innerHTML; App.instance.renderTabs(); });
+            
+            return wrapper;
+        }
+
+        static async createXlsxView(file) {
+            await PluginLoader.load('xlsx');
+            const container = document.createElement('div');
+            container.className = 'office-view';
+            try {
+                const arrayBuffer = await file.blob.arrayBuffer();
+                const workbook = XLSX.read(arrayBuffer, {type: 'array'});
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const html = XLSX.utils.sheet_to_html(firstSheet);
+                container.innerHTML = html;
+            } catch(e) {
+                container.innerHTML = `<p style="color:red">Error: ${e.message}</p>`;
+            }
+            return container;
+        }
+
+        static async createImageView(file) {
+            const container = document.createElement('div');
+            container.className = 'media-view';
+            const img = document.createElement('img');
+            img.src = URL.createObjectURL(file.blob);
+            container.appendChild(img);
+            return container;
+        }
+
+        static async createMediaView(file, ext) {
+            const container = document.createElement('div');
+            container.className = 'media-view';
+            const type = ['mp4','webm','ogg'].includes(ext) ? 'video' : 'audio';
+            const el = document.createElement(type);
+            el.src = URL.createObjectURL(file.blob);
+            el.controls = true;
+            container.appendChild(el);
+            return container;
+        }
+
+        static async exportPdfWithAnnotations(file, container) {
+            UIManager.showToast('Generando PDF...'); await PluginLoader.load('pdflib');
+            const { PDFDocument, rgb, StandardFonts } = window.PDFLib;
+            try {
+                const pdfDoc = await PDFDocument.load(await file.blob.arrayBuffer());
+                const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+                const wrappers = container.querySelectorAll('.pdf-page-wrapper');
+                pdfDoc.getPages().forEach(async (page, i) => {
+                    if (!wrappers[i]) return;
+                    const { height } = page.getSize(); const scale = 1.2;
+                    wrappers[i].querySelectorAll('.pdf-text-input').forEach(inp => {
+                        const txt = inp.innerText.trim();
+                        if (txt) page.drawText(txt, { x: parseFloat(inp.style.left)/scale, y: height - (parseFloat(inp.style.top)/scale) - 14, size: 14, font, color: rgb(0,0,0) });
+                    });
+                    const cvs = wrappers[i].querySelector('.pdf-canvas-layer');
+                    if (cvs && cvs.toDataURL().length > 1000) page.drawImage(await pdfDoc.embedPng(cvs.toDataURL()), { x:0, y:0, width: page.getWidth(), height: page.getHeight() });
+                });
+                const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([await pdfDoc.save()], {type: 'application/pdf'})); a.download = `edited_${file.name}`; a.click();
+            } catch (e) { console.error(e); }
+        }
+
+        static async createHtmlView(file) {
+            await this.loadMonaco();
+            const wrapper = document.createElement('div'); wrapper.style.height = '100%'; wrapper.style.display = 'flex'; wrapper.style.flexDirection = 'column';
+            const tb = document.createElement('div'); tb.style.cssText = 'padding:5px 10px;background:var(--bg-header);border-bottom:1px solid var(--border);display:flex;gap:10px;';
+            const run = document.createElement('button'); run.innerHTML = '<i class="fa-solid fa-play" style="color:var(--success)"></i> Actualizar'; run.style.cssText = 'background:none;border:none;color:var(--text-primary);cursor:pointer;font-weight:bold;';
+            const tog = document.createElement('button'); tog.innerHTML = '<i class="fa-solid fa-eye"></i> Alternar'; tog.style.cssText = 'background:none;border:none;color:var(--text-secondary);cursor:pointer;';
+            tb.append(run, tog); wrapper.append(tb);
+
+            const ctr = document.createElement('div'); ctr.className = 'split-view';
+            const ed = document.createElement('div'); ed.className = 'split-editor';
+            const res = document.createElement('div'); res.className = 'split-resizer-handle';
+            const pre = document.createElement('div'); pre.className = 'split-preview'; pre.style.padding = '0'; pre.style.background = '#fff';
+            const ifr = document.createElement('iframe'); ifr.style.cssText = 'width:100%;height:100%;border:none;';
+            pre.appendChild(ifr); ctr.append(ed, res, pre); wrapper.appendChild(ctr);
+
+            // Use contentRef if available for text/code files
+            const initialContent = file.contentRef || await file.blob.text();
+
+            const editor = monaco.editor.create(ed, {
+                value: initialContent, language: 'html', theme: 'vs-dark', automaticLayout: false, fontFamily: 'var(--font-code)', letterSpacing: 0
+            });
+            const layout = () => requestAnimationFrame(() => editor.layout());
+            new ResizeObserver(layout).observe(ed);
+            
+            let drag = false;
+            res.onmousedown = () => { drag = true; pre.style.pointerEvents = 'none'; };
+            document.onmousemove = e => { if(drag) { ed.style.width = (e.clientX / ctr.offsetWidth * 100) + '%'; layout(); } };
+            document.onmouseup = () => { drag = false; pre.style.pointerEvents = 'auto'; };
+
+            tog.onclick = () => { pre.classList.toggle('hidden-pane'); res.classList.toggle('hidden-pane'); ed.classList.toggle('full-width'); layout(); };
+            run.onclick = () => { const d = ifr.contentDocument; d.open(); d.write(editor.getValue()); d.close(); };
+            editor.onDidChangeModelContent(() => { file.isDirty = true; file.contentRef = editor.getValue(); App.instance.renderTabs(); });
+            
+            setTimeout(() => run.click(), 500);
+            return wrapper;
+        }
+
+        static async createMarkdownView(file) {
+            await this.loadMonaco(); await PluginLoader.load('marked');
+            
+            const wrapper = document.createElement('div'); wrapper.style.height = '100%'; wrapper.style.display = 'flex'; wrapper.style.flexDirection = 'column';
+            const tb = document.createElement('div'); tb.style.cssText = 'padding:5px 10px;background:var(--bg-header);border-bottom:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;';
+            const tog = document.createElement('button'); tog.innerHTML = '<i class="fa-solid fa-eye"></i> Alternar Vista'; tog.style.cssText = 'background:none;border:none;color:var(--text-secondary);cursor:pointer;';
+            tb.appendChild(tog); wrapper.appendChild(tb);
+
+            const ctr = document.createElement('div'); ctr.className = 'split-view';
+            const ed = document.createElement('div'); ed.className = 'split-editor';
+            const res = document.createElement('div'); res.className = 'split-resizer-handle';
+            const pre = document.createElement('div'); pre.className = 'split-preview';
+            ctr.append(ed, res, pre); wrapper.appendChild(ctr);
+
+            const initialContent = file.contentRef || await file.blob.text();
+
+            const editor = monaco.editor.create(ed, {
+                value: initialContent, language: 'markdown', theme: 'vs-dark', automaticLayout: false, fontFamily: 'var(--font-code)', wordWrap: 'on', letterSpacing: 0
+            });
+            
+            const layout = () => requestAnimationFrame(() => editor.layout());
+            new ResizeObserver(layout).observe(ed);
+            
+            let drag = false;
+            res.onmousedown = () => { drag = true; };
+            document.onmousemove = e => { if(drag) { ed.style.width = (e.clientX / ctr.offsetWidth * 100) + '%'; layout(); } };
+            document.onmouseup = () => { drag = false; };
+
+            tog.onclick = () => { pre.classList.toggle('hidden-pane'); res.classList.toggle('hidden-pane'); ed.classList.toggle('full-width'); layout(); };
+
+            const update = () => { 
+                const val = editor.getValue();
+                if (window.marked && window.marked.parse) {
+                    try {
+                        pre.innerHTML = window.marked.parse(val);
+                        if(window.renderMathInElement) window.renderMathInElement(pre);
+                    } catch(err) { pre.innerHTML = `<div style="color:red">Error renderizando Markdown: ${err.message}</div>`; }
+                } else if (window.marked) { pre.innerHTML = window.marked(val); } else { pre.innerHTML = "<div>Cargando motor de renderizado...</div>"; }
+                file.isDirty = true; file.contentRef = val; App.instance.renderTabs(); 
+            };
+            
+            editor.onDidChangeModelContent(update); 
+            setTimeout(update, 200);
+            editor.onDidScrollChange(e => { if(e.scrollTopChanged) pre.scrollTop = (e.scrollTop / (e.scrollHeight - e.viewHeight)) * (pre.scrollHeight - pre.clientHeight); });
+            
+            return wrapper;
+        }
+
+        static async createCodeView(file, ext) {
+            await this.loadMonaco();
+            const ctr = document.createElement('div'); ctr.style.height = '100%'; ctr.style.display='flex'; ctr.style.flexDirection='column';
+            const tb = document.createElement('div'); tb.style.cssText = 'padding:5px 10px;background:var(--bg-header);border-bottom:1px solid var(--border);';
+            const run = document.createElement('button'); run.innerHTML = '<i class="fa-solid fa-play" style="color:var(--success)"></i> Run'; run.style.cssText = 'background:none;border:none;color:var(--text-primary);cursor:pointer;font-weight:bold;';
+            tb.appendChild(run); ctr.appendChild(tb);
+
+            const edDiv = document.createElement('div'); edDiv.style.cssText = 'flex:1;overflow:hidden;';
+            const cons = document.createElement('div'); cons.className = 'console-panel'; cons.style.display = 'none';
+            ctr.append(edDiv, cons);
+
+            const initialContent = file.contentRef || await file.blob.text();
+
+            const editor = monaco.editor.create(edDiv, {
+                value: initialContent, language: this.mapLang(ext), theme: 'vs-dark', automaticLayout: false, fontFamily: 'var(--font-code)', letterSpacing: 0
+            });
+            App.instance.currentEditor = editor;
+            new ResizeObserver(() => requestAnimationFrame(() => editor.layout())).observe(edDiv);
+            editor.onDidChangeModelContent(() => { file.isDirty = true; file.contentRef = editor.getValue(); App.instance.renderTabs(); });
+
+            run.onclick = async () => {
+                const code = editor.getValue();
+                cons.style.display = 'block'; cons.innerHTML = '<div style="color:gray">// Ejecutando...</div>';
+                const log = (msg, type='log') => { const d = document.createElement('div'); d.className = `log-entry ${type==='error'?'log-error':(type==='success'?'log-success':'log-info')}`; d.textContent = msg; cons.appendChild(d); cons.scrollTop = cons.scrollHeight; };
+
+                if (ext === 'js') {
+                    try {
+                        const originalLog = console.log;
+                        console.log = (...args) => { originalLog(...args); log(args.join(' ')); };
+                        eval(code); 
+                        console.log = originalLog;
+                        log('Ejecución JS finalizada.', 'success');
+                    } catch(e) { log(e.message, 'error'); }
+                } 
+                else if (ext === 'py' || ext === 'java' || ext === 'cpp') {
+                    log(`Compilando ${ext} en la nube (Piston API)...`, 'info');
+                    const result = await CompilerService.execute(ext, code);
+                    if (result.stdout) log(result.stdout);
+                    if (result.stderr) log(result.stderr, 'error');
+                    log(`Ejecución ${ext} finalizada. Exit code: ${result.code || 0}`, result.code === 0 ? 'success' : 'error');
+                }
+                else { log('Ejecución no soportada para este lenguaje.', 'error'); }
+            };
+            return ctr;
+        }
+
+        static async createPdfView(file) {
+            await PluginLoader.load('pdfjs'); pdfjsLib.GlobalWorkerOptions.workerSrc = PluginLoader.sources.pdfjsWorker;
+            const ctr = document.createElement('div'); ctr.className = 'content-scroll'; ctr.id = 'pdf-container'; ctr.style.cssText = 'background:#222;padding:20px;display:flex;flex-direction:column;align-items:center;gap:20px;';
+            const tb = document.createElement('div'); tb.className = 'floating-toolbar';
+            tb.innerHTML = `<button id="pdf-hand" class="active"><i class="fa-solid fa-hand"></i></button><button id="pdf-draw"><i class="fa-solid fa-paintbrush"></i></button><button id="pdf-text"><i class="fa-solid fa-font"></i></button>`;
+            ctr.appendChild(tb);
+            
+            App.instance.currentEditor = null; // No Monaco in PDF view
+
+            let mode = 'hand';
+            const setMode = (m, btn) => { mode = m; tb.querySelectorAll('button').forEach(b => b.classList.remove('active')); btn.classList.add('active'); ctr.querySelectorAll('.pdf-page-wrapper').forEach(w => { w.classList.toggle('draw-mode', m === 'draw'); w.style.cursor = m === 'text' ? 'text' : (m === 'hand' ? 'grab' : 'crosshair'); }); };
+            tb.querySelector('#pdf-hand').onclick = e => setMode('hand', e.currentTarget); tb.querySelector('#pdf-draw').onclick = e => setMode('draw', e.currentTarget); tb.querySelector('#pdf-text').onclick = e => setMode('text', e.currentTarget);
+
+            const pdf = await pdfjsLib.getDocument(URL.createObjectURL(file.blob)).promise;
+            for(let i=1; i<=pdf.numPages; i++) {
+                const page = await pdf.getPage(i); const vp = page.getViewport({scale: 1.2});
+                const wrp = document.createElement('div'); wrp.className = 'pdf-page-wrapper'; wrp.style.cssText = `position:relative;box-shadow:0 5px 15px rgba(0,0,0,0.5);width:${vp.width}px;height:${vp.height}px;`;
+                const cvs = document.createElement('canvas'); cvs.width = vp.width; cvs.height = vp.height; 
+                const drawCvs = document.createElement('canvas'); drawCvs.className = 'pdf-canvas-layer'; drawCvs.width = vp.width; drawCvs.height = vp.height;
+                wrp.append(cvs, drawCvs); ctr.appendChild(wrp); page.render({canvasContext: cvs.getContext('2d'), viewport: vp});
+
+                const ctx = drawCvs.getContext('2d'); ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.strokeStyle = '#ef4444'; let drawing = false;
+                drawCvs.onmousedown = e => { if(mode==='draw') { drawing=true; ctx.beginPath(); ctx.moveTo(e.offsetX, e.offsetY); } };
+                drawCvs.onmousemove = e => { if(drawing && mode==='draw') { ctx.lineTo(e.offsetX, e.offsetY); ctx.stroke(); } };
+                drawCvs.onmouseup = () => drawing=false;
+
+                wrp.onclick = e => {
+                    if(mode === 'text' && !e.target.classList.contains('pdf-text-input')) {
+                        const inp = document.createElement('div'); inp.className = 'pdf-text-input'; inp.contentEditable = true;
+                        inp.style.left = e.offsetX + 'px'; inp.style.top = e.offsetY + 'px';
+                        wrp.appendChild(inp); inp.focus();
+                        inp.onblur = () => { if(!inp.innerText.trim()) inp.remove(); else { inp.style.border='none'; inp.style.background='transparent'; inp.contentEditable=false; } };
+                    }
+                };
+            }
+            return ctr;
+        }
+
+        static async createHexView(file) {
+            App.instance.currentEditor = null;
+            const div = document.createElement('div'); div.className = 'hex-view';
+            div.innerHTML = `<div class="hex-header">OFFSET</div><div class="hex-header">BYTES</div><div class="hex-header">ASCII</div>`;
+            return div; 
+        }
     }
 
-    // Inicializar
-    window.onload = () => App.instance.init();
+    class UIManager {
+        static showToast(msg) { const t = document.createElement('div'); t.style.cssText = 'position:fixed;bottom:20px;right:20px;background:var(--accent);color:white;padding:10px 20px;border-radius:5px;z-index:1000;'; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 3000); }
+        
+        static toggleCommandPalette() { 
+            const el = document.getElementById('cmd-backdrop');
+            const isVisible = el.style.display === 'flex';
+            el.style.display = isVisible ? 'none' : 'flex';
+            if (!isVisible) {
+                document.getElementById('cmd-input').value = '';
+                document.getElementById('cmd-input').focus();
+                this.renderCommands();
+            }
+        }
+        
+        static closeModal() { document.getElementById('generic-modal').style.display = 'none'; }
+        static showModal(title, contentNode) { document.getElementById('generic-modal-title').textContent = title; const body = document.getElementById('generic-modal-body'); body.innerHTML = ''; body.appendChild(contentNode); document.getElementById('generic-modal').style.display = 'flex'; }
+        
+        static selectDraftType() { 
+            return new Promise((resolve) => { 
+                const container = document.createElement('div'); 
+                container.className = 'draft-grid'; 
+                const types = [
+                    { id: 'md', label: 'Markdown', icon: 'fa-file-lines', color: '#3b82f6' }, 
+                    { id: 'html', label: 'HTML', icon: 'fa-html5', color: '#e34f26' }, 
+                    { id: 'js', label: 'JavaScript', icon: 'fa-js', color: '#f7df1e' }, 
+                    { id: 'py', label: 'Python', icon: 'fa-python', color: '#3776ab' },
+                    { id: 'java', label: 'Java', icon: 'fa-java', color: '#f89820' }
+                ]; 
+                types.forEach(t => { 
+                    const btn = document.createElement('div'); 
+                    btn.className = 'draft-option'; 
+                    btn.innerHTML = `<i class="fa-brands ${t.icon}" style="color:${t.color}"></i><span>${t.label}</span>`; 
+                    btn.onclick = () => { this.closeModal(); resolve(t.id); }; 
+                    container.appendChild(btn); 
+                }); 
+                this.showModal('Crear Nuevo Archivo', container); 
+            }); 
+        }
+        
+        static showShortcutsHelp() {
+            const shortcuts = {
+                'General': [
+                    { key: 'Ctrl + K', desc: 'Abrir Paleta de Comandos' },
+                    { key: 'Ctrl + O', desc: 'Abrir Archivo' },
+                    { key: 'Ctrl + S', desc: 'Guardar Archivo' },
+                    { key: 'Ctrl + Rueda', desc: 'Zoom Interfaz/Editor' }
+                ],
+                'Editor de Código': [
+                    { key: 'Ctrl + F', desc: 'Buscar texto' },
+                    { key: 'Alt + Click', desc: 'Multi-cursor' },
+                    { key: 'Ctrl + /', desc: 'Comentar línea' }
+                ],
+                'Gestión': [
+                    { key: 'Esc', desc: 'Cerrar Modales' }
+                ]
+            };
+            
+            const container = document.createElement('div');
+            container.className = 'shortcuts-container';
+            Object.entries(shortcuts).forEach(([section, items]) => {
+                const secDiv = document.createElement('div'); secDiv.className = 'shortcut-section';
+                secDiv.innerHTML = `<h3>${section}</h3>`;
+                const list = document.createElement('div'); list.className = 'shortcut-list';
+                items.forEach(item => {
+                    const row = document.createElement('div'); row.className = 'shortcut-row';
+                    const keysHtml = item.key.split('+').map(k => `<kbd>${k.trim()}</kbd>`).join(' + ');
+                    row.innerHTML = `<span class="shortcut-desc">${item.desc}</span> <span class="shortcut-keys">${keysHtml}</span>`;
+                    list.appendChild(row);
+                });
+                secDiv.appendChild(list); container.appendChild(secDiv);
+            });
+            this.showModal('Atajos de Teclado', container);
+        }
+
+        // --- NEW: Export Format Selector ---
+        static showExportOptions() {
+            return new Promise((resolve) => {
+                const container = document.createElement('div');
+                container.className = 'draft-grid';
+                const opts = [
+                    { id: 'pdf', label: 'PDF (Visual)', icon: 'fa-file-pdf', color: '#e11d48' },
+                    { id: 'html', label: 'HTML (Word)', icon: 'fa-file-word', color: '#2563eb' },
+                    { id: 'src', label: 'Código Fuente', icon: 'fa-code', color: '#10b981' },
+                    { id: 'raw', label: 'Original', icon: 'fa-file', color: '#64748b' }
+                ];
+                opts.forEach(t => {
+                    const btn = document.createElement('div');
+                    btn.className = 'draft-option';
+                    btn.innerHTML = `<i class="fa-solid ${t.icon}" style="color:${t.color}"></i><span>${t.label}</span>`;
+                    btn.onclick = () => { this.closeModal(); resolve(t.id); };
+                    container.appendChild(btn);
+                });
+                this.showModal('Exportar Como', container);
+            });
+        }
+
+        static renderCommands() { 
+            const list = document.getElementById('cmd-list'); list.innerHTML = '';
+            const cmds = App.instance.generateCommandsList();
+            cmds.forEach(cmd => {
+                const li = document.createElement('li'); li.className = 'cmd-item';
+                li.innerHTML = `<div style="display:flex; align-items:center; gap:10px;"><i class="fa-solid ${cmd.icon}" style="width:20px;"></i> ${cmd.label}</div>`;
+                li.onclick = () => { this.toggleCommandPalette(); cmd.action(); };
+                list.appendChild(li);
+            });
+        }
+    }
+
+    class App {
+        constructor() { this.openTabs = []; this.activeTab = null; this.currentEditor = null; this.bindEvents(); this.restoreSession(); SettingsManager.loadDefaults(); }
+        static get instance() { if(!window.__app) window.__app = new App(); return window.__app; }
+        
+        bindEvents() { 
+            document.getElementById('file-input').onchange = e => this.handleFiles(Array.from(e.target.files)); 
+            window.addEventListener('keydown', (e) => {
+                if((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); UIManager.toggleCommandPalette(); }
+            });
+            document.getElementById('cmd-backdrop').onclick = e => { if(e.target.id === 'cmd-backdrop') e.target.style.display = 'none'; };
+            window.addEventListener('wheel', (e) => {
+                if(e.ctrlKey) { e.preventDefault(); if (this.currentEditor) { const currentFont = this.currentEditor.getOption(monaco.editor.EditorOption.fontSize); const newFont = e.deltaY > 0 ? currentFont - 1 : currentFont + 1; if(newFont >= 8 && newFont <= 72) { this.currentEditor.updateOptions({ fontSize: newFont }); const ind = document.getElementById('zoom-float'); ind.textContent = `${newFont}px`; ind.classList.add('visible'); clearTimeout(this.zoomTimer); this.zoomTimer = setTimeout(() => ind.classList.remove('visible'), 1000); } } }
+            }, {passive: false});
+        }
+        
+        openFileDialog() { document.getElementById('file-input').click(); }
+        async handleFiles(files) { for(const f of files) { const meta = { id: crypto.randomUUID(), name: f.name, blob: f, isDirty: false }; await FileSystem.put(meta); this.openTabs.push(meta); this.activateTab(meta.id); } this.saveSession(); }
+        
+        async createDraft() { 
+            const type = await UIManager.selectDraftType(); 
+            if(!type) return; 
+            let content, name, mime; 
+            const ts = Date.now(); 
+            switch(type) { 
+                case 'html': 
+                    content = `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Demo Interactiva</title>
+  <style>
+    body { margin: 0; height: 100vh; display: flex; justify-content: center; align-items: center; background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: white; font-family: 'Segoe UI', sans-serif; }
+    .card { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(12px); padding: 2rem; border-radius: 1rem; border: 1px solid rgba(255, 255, 255, 0.2); text-align: center; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); max-width: 400px; animation: float 6s ease-in-out infinite; }
+    h1 { background: linear-gradient(to right, #818cf8, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 0 0 1rem 0; }
+    button { background: #6366f1; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: bold; cursor: pointer; transition: all 0.2s; margin-top: 1rem; }
+    button:hover { background: #4f46e5; transform: scale(1.05); }
+    @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>¡Hola Hacker!</h1>
+    <p>Este es un ejemplo de HTML + CSS con efecto de vidrio esmerilado (Glassmorphism).</p>
+    <button onclick="saludar()">Haz Clic Aquí</button>
+  </div>
+  <script>
+    function saludar() {
+      const btn = document.querySelector('button');
+      btn.innerText = '¡Funciona! 🚀';
+      if(window.confetti) confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+      else alert('¡Funciona!');
+    }
+  <\/script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"><\/script>
+</body>
+</html>`;
+                    name = `index_${ts}.html`; mime = 'text/html'; break; 
+                case 'js': content = '// JavaScript\nconsole.log("Hola Mundo");'; name = `script_${ts}.js`; mime = 'text/javascript'; break; 
+                case 'py': content = '# Python\nprint("Hola Mundo")'; name = `main_${ts}.py`; mime = 'text/x-python'; break; 
+                case 'java': content = 'public class Main {\n    public static void main(String[] args) {\n        System.out.println("Hola Mundo desde Java");\n    }\n}'; name = `Main_${ts}.java`; mime = 'text/x-java-source'; break;
+                default: 
+                    content = `# 🚀 Bienvenido a Hacker Elegante
+
+Este es un ejemplo avanzado de **Markdown** con soporte en tiempo real.
+
+## Características
+- **Sintaxis GFM**: GitHub Flavored Markdown.
+- **Matemáticas**: Soporte para KaTeX.
+- **Código**: Resaltado de sintaxis.
+
+### Matemáticas
+La fórmula cuadrática es:
+$$ x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a} $$
+
+### Código
+\`\`\`javascript
+function saludar() {
+  console.log("Hola Mundo!");
+}
+\`\`\`
+
+### Tabla
+| Item | Cantidad | Precio |
+|------|:--------:|-------:|
+| CPU  | 1        | $300   |
+| RAM  | 2        | $150   |
+
+> "El código es poesía lógica."
+`;
+                    name = `draft_${ts}.md`; mime = 'text/markdown'; 
+            } 
+            const blob = new Blob([content], {type: mime}); 
+            const meta = { id: crypto.randomUUID(), name, blob, isDirty: false }; 
+            await FileSystem.put(meta); this.openTabs.push(meta); this.activateTab(meta.id); this.saveSession(); 
+        }
+        
+        async activateTab(id) {
+            this.activeTab = this.openTabs.find(t => t.id === id);
+            if (!this.activeTab) return; 
+
+            this.renderTabs();
+            
+            const welcomeMsg = document.getElementById('welcome-msg');
+            if(welcomeMsg) welcomeMsg.classList.add('hidden');
+            
+            const ctr = document.getElementById('content-scroll');
+            // Safe clear
+            if(ctr) {
+                ctr.innerHTML = '';
+                try {
+                    const viewer = await EditorFactory.createViewer(this.activeTab);
+                    ctr.appendChild(viewer);
+                } catch (e) {
+                    console.error("Error creating viewer:", e);
+                    ctr.textContent = "Error al cargar el visor.";
+                }
+            }
+            
+            const statusText = document.getElementById('status-text');
+            if(statusText) statusText.textContent = `Editando: ${this.activeTab.name}`;
+            
+            const statusMeta = document.getElementById('status-meta');
+            if(statusMeta) statusMeta.textContent = `${(this.activeTab.blob.size / 1024).toFixed(1)} KB`;
+        }
+
+        renderTabs() { const c = document.getElementById('tabs'); c.innerHTML = ''; this.openTabs.forEach(t => { const el = document.createElement('div'); el.className = `tab ${this.activeTab?.id === t.id ? 'active' : ''}`; el.innerHTML = `${t.isDirty ? '● ' : ''}${t.name} <span class="close">×</span>`; el.onclick = () => this.activateTab(t.id); el.querySelector('.close').onclick = e => { e.stopPropagation(); this.closeTab(t.id); }; c.appendChild(el); }); }
+        closeTab(id) { this.openTabs = this.openTabs.filter(t => t.id !== id); if(this.activeTab?.id === id) { this.activeTab = this.openTabs[0] || null; if(this.activeTab) this.activateTab(this.activeTab.id); else { document.getElementById('content-scroll').innerHTML = ''; document.getElementById('welcome-msg').classList.remove('hidden'); this.updateRecents(); } } this.renderTabs(); this.saveSession(); }
+        
+        async updateRecents() { const files = await FileSystem.getAll(); const list = document.getElementById('welcome-recents-list'); list.innerHTML = ''; files.slice(-5).reverse().forEach(f => { const div = document.createElement('div'); div.className = 'welcome-recent-item'; div.innerHTML = `<span><i class="fa-solid fa-file"></i> ${f.name}</span> <span style="font-size:11px;color:gray">${(f.blob.size/1024).toFixed(1)} KB</span>`; div.onclick = () => { if(!this.openTabs.find(t=>t.id===f.id)) this.openTabs.push(f); this.activateTab(f.id); }; list.appendChild(div); }); }
+        saveSession() { localStorage.setItem('hacker_session_v2', JSON.stringify(this.openTabs.map(t => t.id))); }
+        
+        async restoreSession() {
+            await this.updateRecents();
+            const sessionIds = JSON.parse(localStorage.getItem('hacker_session_v2') || '[]');
+            if (sessionIds.length > 0) {
+                for (const id of sessionIds) {
+                    const file = await FileSystem.getFile(id);
+                    if (file) this.openTabs.push(file);
+                }
+                if (this.openTabs.length > 0) {
+                    this.activateTab(this.openTabs[0].id);
+                }
+            }
+        }
+        
+        toggleTheme() { document.documentElement.setAttribute('data-theme', document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light'); }
+        
+        // --- FIXED SAVE LOGIC FOR PWA PERSISTENCE ---
+        async saveCurrent() { 
+            if(this.activeTab) { 
+                if(this.activeTab.contentRef) { 
+                    // Update the BLOB if it's a text-based format for download accuracy
+                    const ext = this.activeTab.name.split('.').pop().toLowerCase();
+                    const textFormats = ['md', 'html', 'js', 'py', 'txt', 'css', 'json', 'java', 'cpp'];
+                    
+                    if (textFormats.includes(ext)) {
+                        this.activeTab.blob = new Blob([this.activeTab.contentRef], {type: this.activeTab.blob.type});
+                    }
+                    // For binary formats (ODT/DOCX), we keep contentRef separate for editor state
+                    // and do NOT overwrite the original blob to allow "revert" or specialized export.
+                    
+                    this.activeTab.isDirty = false; 
+                    await FileSystem.put(this.activeTab); // Store to IndexedDB
+                    this.renderTabs(); 
+                    UIManager.showToast('Guardado en navegador'); 
+                } 
+            } 
+        }
+        
+        async exportCurrent() { this.promptExport(); } // Alias for button
+
+        generateCommandsList() {
+            const cmds = [
+                { id: 'shortcuts', label: 'Ver Atajos de Teclado', icon: 'fa-keyboard', action: () => UIManager.showShortcutsHelp() },
+                { id: 'open', label: 'Abrir archivo local', icon: 'fa-folder-open', action: () => this.openFileDialog() },
+                { id: 'draft', label: 'Nuevo Borrador', icon: 'fa-plus', action: () => this.createDraft() },
+                { id: 'theme', label: 'Cambiar Tema (Toggle)', icon: 'fa-circle-half-stroke', action: () => this.toggleTheme() },
+                { id: 'full', label: 'Modo Pantalla Completa', icon: 'fa-expand', action: () => document.documentElement.requestFullscreen() },
+            ];
+
+            if(this.activeTab) {
+                cmds.push(
+                    { id: 'save', label: 'Guardar Archivo', icon: 'fa-floppy-disk', action: () => this.saveCurrent() },
+                    { id: 'export', label: 'Exportar Archivo', icon: 'fa-file-export', action: () => this.promptExport() },
+                    { id: 'close', label: 'Cerrar Pestaña', icon: 'fa-xmark', action: () => this.closeTab(this.activeTab.id) }
+                );
+            }
+            return cmds;
+        }
+    }
+
+    window.App = App; window.UIManager = UIManager; window.SettingsManager = SettingsManager;
   </script>
 </body>
 </html>
