@@ -361,6 +361,8 @@
     }
 
     class CompilerService {
+        static defaultJudge0Endpoint = 'https://ce.judge0.com';
+
         static async executeViaJudge0(language, code, baseEndpoint) {
             const endpoint = (baseEndpoint || '').trim().replace(/\/+$/, '');
             if (!endpoint) throw new Error('Endpoint Judge0 no configurado');
@@ -414,6 +416,7 @@
             };
             const customEndpoint = (localStorage.getItem('runner_endpoint') || '').trim().replace(/\/+$/, '');
             const judge0Endpoint = (localStorage.getItem('judge0_endpoint') || '').trim().replace(/\/+$/, '');
+            const resolvedJudge0Endpoint = judge0Endpoint || this.defaultJudge0Endpoint;
             const endpointVariants = [
                 ...(customEndpoint ? [customEndpoint] : []),
                 'https://emkc.org/api/v2/piston/execute',
@@ -440,7 +443,7 @@
                 stdout: '',
                 stderr: `Error de API (${status}) en ${endpoint}: ${body || 'sin detalles'}.${hintByStatus(status)}`,
                 code: 1,
-                requiresRunnerSetup: status === 401 && endpoint.includes('emkc.org') && !customEndpoint
+                requiresRunnerSetup: status === 401 && endpoint.includes('emkc.org') && !customEndpoint && !['py', 'java'].includes(language)
             });
 
             const parseJsonSafe = (raw) => {
@@ -499,9 +502,9 @@
                 }
 
                 const canUseJudge0 = ['py', 'java'].includes(language);
-                if (judge0Endpoint && canUseJudge0) {
+                if (resolvedJudge0Endpoint && canUseJudge0) {
                     try {
-                        return await this.executeViaJudge0(language, code, judge0Endpoint);
+                        return await this.executeViaJudge0(language, code, resolvedJudge0Endpoint);
                     } catch (judgeErr) {
                         const extra = judgeErr?.message ? ` Fallback Judge0 falló: ${judgeErr.message}` : '';
                         if (lastApiError) {
