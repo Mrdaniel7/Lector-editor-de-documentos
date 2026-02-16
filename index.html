@@ -1712,7 +1712,7 @@
         }
         
         openFileDialog() { document.getElementById('file-input').click(); }
-        async handleFiles(files) { for(const f of files) { const meta = { id: crypto.randomUUID(), name: f.name, blob: f, isDirty: false }; await FileSystem.put(meta); this.openTabs.push(meta); this.activateTab(meta.id); } this.saveSession(); }
+        async handleFiles(files) { for(const f of files) { const meta = { id: crypto.randomUUID(), name: f.name, blob: f, isDirty: false }; await FileSystem.put(meta); this.openTabs.push(meta); this.activateTab(meta.id); } await this.updateRecents(); this.saveSession(); }
         
         async createDraft() { 
             const type = await UIManager.selectDraftType(); 
@@ -1791,7 +1791,7 @@ function saludar() {
             } 
             const blob = new Blob([content], {type: mime}); 
             const meta = { id: crypto.randomUUID(), name, blob, isDirty: false }; 
-            await FileSystem.put(meta); this.openTabs.push(meta); this.activateTab(meta.id); this.saveSession(); 
+            await FileSystem.put(meta); this.openTabs.push(meta); this.activateTab(meta.id); await this.updateRecents(); this.saveSession(); 
         }
         
 
@@ -1959,7 +1959,43 @@ function saludar() {
         }
         closeTab(id) { this.openTabs = this.openTabs.filter(t => t.id !== id); if(this.activeTab?.id === id) { this.activeTab = this.openTabs[0] || null; if(this.activeTab) this.activateTab(this.activeTab.id); else { document.getElementById('content-scroll').innerHTML = ''; document.getElementById('welcome-msg').classList.remove('hidden'); this.updateRecents(); } } this.renderTabs(); this.saveSession(); }
         
-        async updateRecents() { const files = await FileSystem.getAll(); const list = document.getElementById('welcome-recents-list'); list.innerHTML = ''; files.slice(-5).reverse().forEach(f => { const div = document.createElement('div'); div.className = 'welcome-recent-item'; div.innerHTML = `<span><i class="fa-solid fa-file"></i> ${f.name}</span> <span style="font-size:11px;color:gray">${(f.blob.size/1024).toFixed(1)} KB</span>`; div.onclick = () => { if(!this.openTabs.find(t=>t.id===f.id)) this.openTabs.push(f); this.activateTab(f.id); }; list.appendChild(div); }); }
+        async updateRecents() {
+            const files = (await FileSystem.getAll()).slice(-5).reverse();
+            const welcomeList = document.getElementById('welcome-recents-list');
+            const sidebarList = document.getElementById('recent-list');
+
+            if (welcomeList) {
+                welcomeList.innerHTML = '';
+            }
+            if (sidebarList) {
+                sidebarList.innerHTML = '';
+            }
+
+            files.forEach(f => {
+                const sizeText = `${(f.blob.size / 1024).toFixed(1)} KB`;
+                const openRecentFile = () => {
+                    if (!this.openTabs.find(t => t.id === f.id)) this.openTabs.push(f);
+                    this.activateTab(f.id);
+                };
+
+                if (welcomeList) {
+                    const welcomeItem = document.createElement('div');
+                    welcomeItem.className = 'welcome-recent-item';
+                    welcomeItem.innerHTML = `<span><i class="fa-solid fa-file"></i> ${f.name}</span> <span style="font-size:11px;color:gray">${sizeText}</span>`;
+                    welcomeItem.onclick = openRecentFile;
+                    welcomeList.appendChild(welcomeItem);
+                }
+
+                if (sidebarList) {
+                    const sidebarItem = document.createElement('div');
+                    sidebarItem.className = 'file-item';
+                    sidebarItem.innerHTML = `<i class="fa-solid fa-clock-rotate-left"></i> <span class="tab-name">${f.name}</span>`;
+                    sidebarItem.title = `${f.name} · ${sizeText}`;
+                    sidebarItem.onclick = openRecentFile;
+                    sidebarList.appendChild(sidebarItem);
+                }
+            });
+        }
         saveSession() {
             const ids = this.openTabs.map(t => t.id);
             localStorage.setItem(App.sessionStorageKey, JSON.stringify(ids));
