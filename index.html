@@ -603,7 +603,10 @@
             container.className = 'docx-viewer-container';
             const toolbar = document.createElement('div');
             toolbar.className = 'floating-toolbar';
-            toolbar.innerHTML = `<button id="enable-edit" title="Habilitar Edición"><i class="fa-solid fa-pen-to-square"></i> Editar</button>`;
+            toolbar.innerHTML = `
+                <button id="enable-edit" title="Habilitar Edición"><i class="fa-solid fa-pen-to-square"></i> Editar</button>
+                <button id="open-word-iframe" title="Abrir en Word Online"><i class="fa-solid fa-up-right-from-square"></i> Word iframe</button>
+            `;
             const docWrapper = document.createElement('div');
             docWrapper.className = 'docx-wrapper';
             docWrapper.id = 'print-container'; // Use this for PDF export
@@ -618,6 +621,74 @@
                 container.parentElement.innerHTML = '';
                 document.getElementById('content-scroll').appendChild(editor);
             };
+            toolbar.querySelector('#open-word-iframe').onclick = async () => {
+                const iframeView = await this.createWordIframeView(file);
+                container.parentElement.innerHTML = '';
+                document.getElementById('content-scroll').appendChild(iframeView);
+            };
+            return container;
+        }
+
+        static async createWordIframeView(file) {
+            const container = document.createElement('div');
+            container.className = 'content-scroll';
+            container.style.cssText = 'background:var(--bg-panel);padding:16px;height:100%;display:flex;flex-direction:column;gap:12px;';
+
+            const info = document.createElement('div');
+            info.style.cssText = 'padding:10px 12px;border:1px solid var(--border);border-radius:8px;color:var(--text-secondary);font-size:13px;background:rgba(255,255,255,0.02);';
+            info.innerHTML = '<i class="fa-solid fa-circle-info"></i> Para usar un iframe de Word Online necesitas una URL pública HTTPS del .docx (OneDrive, SharePoint o servidor propio).';
+
+            const actions = document.createElement('div');
+            actions.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;';
+
+            const wordBtn = document.createElement('button');
+            wordBtn.innerHTML = '<i class="fa-brands fa-microsoft"></i> Usar Word Online';
+            wordBtn.style.cssText = 'padding:8px 12px;background:var(--accent);color:white;border:none;border-radius:8px;cursor:pointer;';
+
+            const docsBtn = document.createElement('button');
+            docsBtn.innerHTML = '<i class="fa-brands fa-google"></i> Usar Google Docs Viewer';
+            docsBtn.style.cssText = 'padding:8px 12px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;cursor:pointer;';
+
+            const backBtn = document.createElement('button');
+            backBtn.innerHTML = '<i class="fa-solid fa-arrow-left"></i> Volver';
+            backBtn.style.cssText = 'padding:8px 12px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;cursor:pointer;';
+
+            const frame = document.createElement('iframe');
+            frame.style.cssText = 'width:100%;height:calc(100% - 98px);border:1px solid var(--border);border-radius:8px;background:#fff;';
+            frame.referrerPolicy = 'no-referrer-when-downgrade';
+            frame.title = `Word iframe - ${file.name}`;
+
+            const askPublicUrl = () => {
+                const raw = prompt('Pega la URL pública HTTPS del archivo DOCX:');
+                if (!raw) return null;
+                const url = raw.trim();
+                if (!/^https:\/\//i.test(url)) {
+                    UIManager.showToast('La URL debe iniciar con https://');
+                    return null;
+                }
+                return url;
+            };
+
+            wordBtn.onclick = () => {
+                const srcUrl = askPublicUrl();
+                if (!srcUrl) return;
+                frame.src = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(srcUrl)}`;
+            };
+
+            docsBtn.onclick = () => {
+                const srcUrl = askPublicUrl();
+                if (!srcUrl) return;
+                frame.src = `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(srcUrl)}`;
+            };
+
+            backBtn.onclick = async () => {
+                const viewer = await this.createDocxViewer(file);
+                container.parentElement.innerHTML = '';
+                document.getElementById('content-scroll').appendChild(viewer);
+            };
+
+            actions.append(wordBtn, docsBtn, backBtn);
+            container.append(info, actions, frame);
             return container;
         }
 
