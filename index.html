@@ -177,6 +177,8 @@
     .audio-editor-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
     .audio-editor-grid .control-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; color: var(--text-secondary); font-size: 13px; }
     .audio-editor-grid .control-row input[type="range"] { width: 180px; }
+    .audio-editor-grid .trim-input { width: 88px; padding: 4px 6px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--bg-input); color: var(--text-primary); }
+    .audio-editor-grid .trim-range { width: 220px; }
     .audio-editor-grid .note { color: var(--text-muted); font-size: 12px; }
     
     /* Split View */
@@ -826,6 +828,8 @@
                 <button data-action="rotate-right"><i class="fa-solid fa-rotate-right"></i> +90°</button>
                 <button data-action="flip-x"><i class="fa-solid fa-left-right"></i> Voltear H</button>
                 <button data-action="flip-y"><i class="fa-solid fa-up-down"></i> Voltear V</button>
+                <button data-action="crop-toggle"><i class="fa-solid fa-crop-simple"></i> Modo recorte</button>
+                <button data-action="crop-apply"><i class="fa-solid fa-check"></i> Aplicar recorte</button>
                 <label>Brillo <input type="range" min="40" max="170" value="100" step="5" data-filter="brightness"></label>
                 <label>Contraste <input type="range" min="40" max="180" value="100" step="5" data-filter="contrast"></label>
                 <button data-action="reset"><i class="fa-solid fa-arrows-rotate"></i> Reset</button>
@@ -839,12 +843,21 @@
             const state = { rotation: 0, flipX: 1, flipY: 1, brightness: 100, contrast: 100 };
             const objectUrl = URL.createObjectURL(file.blob);
             const image = new Image();
+            let imageSource = null;
+            let cropMode = false;
+            let dragStart = null;
+            let cropRect = null;
+
+            const syncCropButton = () => {
+                const cropBtn = toolbar.querySelector('[data-action="crop-toggle"]');
+                if (cropBtn) cropBtn.classList.toggle('active', cropMode);
+            };
 
             const draw = () => {
-                if (!image.width || !image.height) return;
+                if (!imageSource || !imageSource.width || !imageSource.height) return;
                 const rightAngle = Math.abs(state.rotation % 180) === 90;
-                canvas.width = rightAngle ? image.height : image.width;
-                canvas.height = rightAngle ? image.width : image.height;
+                canvas.width = rightAngle ? imageSource.height : imageSource.width;
+                canvas.height = rightAngle ? imageSource.width : imageSource.height;
 
                 ctx.save();
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -852,15 +865,66 @@
                 ctx.translate(canvas.width / 2, canvas.height / 2);
                 ctx.rotate((state.rotation * Math.PI) / 180);
                 ctx.scale(state.flipX, state.flipY);
-                ctx.drawImage(image, -image.width / 2, -image.height / 2);
+                ctx.drawImage(imageSource, -imageSource.width / 2, -imageSource.height / 2);
                 ctx.restore();
+
+                if (cropMode && cropRect) {
+                    const { x, y, width, height } = cropRect;
+                    ctx.save();
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.clearRect(x, y, width, height);
+                    ctx.strokeStyle = '#6366f1';
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([8, 4]);
+                    ctx.strokeRect(x, y, width, height);
+                    ctx.restore();
+                }
             };
 
+            const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+
             image.onload = () => {
+                imageSource = image;
                 draw();
                 URL.revokeObjectURL(objectUrl);
             };
             image.src = objectUrl;
+
+            canvas.addEventListener('pointerdown', (event) => {
+                if (!cropMode) return;
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                const x = clamp((event.clientX - rect.left) * scaleX, 0, canvas.width);
+                const y = clamp((event.clientY - rect.top) * scaleY, 0, canvas.height);
+                dragStart = { x, y };
+                cropRect = { x, y, width: 1, height: 1 };
+                canvas.setPointerCapture(event.pointerId);
+                draw();
+            });
+
+            canvas.addEventListener('pointermove', (event) => {
+                if (!cropMode || !dragStart) return;
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                const currentX = clamp((event.clientX - rect.left) * scaleX, 0, canvas.width);
+                const currentY = clamp((event.clientY - rect.top) * scaleY, 0, canvas.height);
+                const x = Math.min(dragStart.x, currentX);
+                const y = Math.min(dragStart.y, currentY);
+                cropRect = {
+                    x,
+                    y,
+                    width: Math.max(1, Math.abs(currentX - dragStart.x)),
+                    height: Math.max(1, Math.abs(currentY - dragStart.y))
+                };
+                draw();
+            });
+
+            const releaseCropDrag = () => { dragStart = null; };
+            canvas.addEventListener('pointerup', releaseCropDrag);
+            canvas.addEventListener('pointercancel', releaseCropDrag);
 
             toolbar.addEventListener('click', (event) => {
                 const btn = event.target.closest('button[data-action]');
@@ -870,12 +934,45 @@
                 if (action === 'rotate-right') state.rotation = (state.rotation + 90) % 360;
                 if (action === 'flip-x') state.flipX *= -1;
                 if (action === 'flip-y') state.flipY *= -1;
+                if (action === 'crop-toggle') {
+                    cropMode = !cropMode;
+                    if (!cropMode) cropRect = null;
+                    syncCropButton();
+                }
+                if (action === 'crop-apply') {
+                    if (!cropRect || cropRect.width < 2 || cropRect.height < 2) {
+                        UIManager.showToast('Selecciona una zona para recortar', true);
+                    } else {
+                        const tmp = document.createElement('canvas');
+                        tmp.width = Math.floor(cropRect.width);
+                        tmp.height = Math.floor(cropRect.height);
+                        const tmpCtx = tmp.getContext('2d');
+                        tmpCtx.drawImage(canvas, cropRect.x, cropRect.y, cropRect.width, cropRect.height, 0, 0, tmp.width, tmp.height);
+                        const cropped = new Image();
+                        cropped.onload = () => {
+                            imageSource = cropped;
+                            state.rotation = 0;
+                            state.flipX = 1;
+                            state.flipY = 1;
+                            cropRect = null;
+                            cropMode = false;
+                            syncCropButton();
+                            draw();
+                            UIManager.showToast('Recorte aplicado');
+                        };
+                        cropped.src = tmp.toDataURL('image/png');
+                    }
+                }
                 if (action === 'reset') {
                     state.rotation = 0;
                     state.flipX = 1;
                     state.flipY = 1;
                     state.brightness = 100;
                     state.contrast = 100;
+                    cropMode = false;
+                    cropRect = null;
+                    imageSource = image;
+                    syncCropButton();
                     toolbar.querySelector('[data-filter="brightness"]').value = '100';
                     toolbar.querySelector('[data-filter="contrast"]').value = '100';
                 }
@@ -930,20 +1027,48 @@
                 <label>Tono <input type="range" min="-1200" max="1200" step="100" value="0" data-audio="detune"></label>
             `;
 
+            const trimControls = document.createElement('div');
+            trimControls.className = 'control-row';
+            trimControls.innerHTML = `
+                <label>Inicio (s) <input type="number" class="trim-input" value="0" min="0" step="0.1" data-audio-trim="start"></label>
+                <label>Fin (s) <input type="number" class="trim-input" value="0" min="0" step="0.1" data-audio-trim="end"></label>
+                <label class="trim-range-label">Rango <input type="range" min="0" max="100" step="1" value="0" class="trim-range" data-audio-trim="start-range"></label>
+                <label class="trim-range-label">a <input type="range" min="0" max="100" step="1" value="100" class="trim-range" data-audio-trim="end-range"></label>
+            `;
+
             const actions = document.createElement('div');
             actions.className = 'mini-editor-toolbar';
             actions.innerHTML = `
                 <button data-audio-action="enable"><i class="fa-solid fa-wave-square"></i> Activar efectos</button>
+                <button data-audio-action="preview-trim"><i class="fa-solid fa-scissors"></i> Previsualizar trozo</button>
+                <button data-audio-action="cut-out"><i class="fa-solid fa-trash-can"></i> Quitar trozo</button>
+                <button data-audio-action="keep-only"><i class="fa-solid fa-object-group"></i> Dejar solo trozo</button>
                 <button data-audio-action="download"><i class="fa-solid fa-download"></i> Descargar copia</button>
-                <span class="note">Editor básico: volumen, velocidad y tono.</span>
+                <span class="note">Editor básico: volumen/tono y recorte por rango (WAV).</span>
             `;
 
             let audioCtx = null;
             let sourceNode = null;
             let gainNode = null;
-            let connected = false;
             let baseRate = 1;
             let detuneCents = 0;
+            let workingBlob = file.blob;
+            let trimLoop = null;
+
+            const trimStartInput = trimControls.querySelector('[data-audio-trim="start"]');
+            const trimEndInput = trimControls.querySelector('[data-audio-trim="end"]');
+            const trimStartRange = trimControls.querySelector('[data-audio-trim="start-range"]');
+            const trimEndRange = trimControls.querySelector('[data-audio-trim="end-range"]');
+
+            const setPlayerBlob = (blob) => {
+                const oldSrc = player.src;
+                player.pause();
+                player.src = URL.createObjectURL(blob);
+                player.load();
+                setTimeout(() => {
+                    if (oldSrc.startsWith('blob:')) URL.revokeObjectURL(oldSrc);
+                }, 2000);
+            };
 
             const ensureAudioGraph = () => {
                 if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -955,7 +1080,109 @@
                     sourceNode = audioCtx.createMediaElementSource(player);
                     sourceNode.connect(gainNode);
                 }
-                connected = true;
+            };
+
+            const syncTrimFromDuration = () => {
+                const duration = Number.isFinite(player.duration) ? player.duration : 0;
+                if (!duration || duration <= 0) return;
+                trimStartInput.max = duration.toFixed(2);
+                trimEndInput.max = duration.toFixed(2);
+                if (Number(trimEndInput.value) === 0) trimEndInput.value = duration.toFixed(2);
+                trimStartRange.value = Math.round((Number(trimStartInput.value) / duration) * 100);
+                trimEndRange.value = Math.round((Number(trimEndInput.value) / duration) * 100);
+            };
+
+            const normalizeTrimValues = () => {
+                const duration = Number.isFinite(player.duration) ? player.duration : 0;
+                if (!duration || duration <= 0) return { start: 0, end: 0, duration: 0 };
+                let start = Math.max(0, Math.min(Number(trimStartInput.value) || 0, duration));
+                let end = Math.max(0, Math.min(Number(trimEndInput.value) || duration, duration));
+                if (end <= start) end = Math.min(duration, start + 0.1);
+                trimStartInput.value = start.toFixed(2);
+                trimEndInput.value = end.toFixed(2);
+                trimStartRange.value = Math.round((start / duration) * 100);
+                trimEndRange.value = Math.round((end / duration) * 100);
+                return { start, end, duration };
+            };
+
+            const readBlobAsArrayBuffer = (blob) => new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(reader.error || new Error('Error leyendo audio'));
+                reader.readAsArrayBuffer(blob);
+            });
+
+            const encodeWav = (audioBuffer) => {
+                const numberOfChannels = audioBuffer.numberOfChannels;
+                const sampleRate = audioBuffer.sampleRate;
+                const bytesPerSample = 2;
+                const blockAlign = numberOfChannels * bytesPerSample;
+                const dataLength = audioBuffer.length * blockAlign;
+                const buffer = new ArrayBuffer(44 + dataLength);
+                const view = new DataView(buffer);
+                let offset = 0;
+                const writeString = (str) => {
+                    for (let i = 0; i < str.length; i++) view.setUint8(offset++, str.charCodeAt(i));
+                };
+
+                writeString('RIFF');
+                view.setUint32(offset, 36 + dataLength, true); offset += 4;
+                writeString('WAVE');
+                writeString('fmt ');
+                view.setUint32(offset, 16, true); offset += 4;
+                view.setUint16(offset, 1, true); offset += 2;
+                view.setUint16(offset, numberOfChannels, true); offset += 2;
+                view.setUint32(offset, sampleRate, true); offset += 4;
+                view.setUint32(offset, sampleRate * blockAlign, true); offset += 4;
+                view.setUint16(offset, blockAlign, true); offset += 2;
+                view.setUint16(offset, bytesPerSample * 8, true); offset += 2;
+                writeString('data');
+                view.setUint32(offset, dataLength, true); offset += 4;
+
+                const channels = [];
+                for (let c = 0; c < numberOfChannels; c++) channels.push(audioBuffer.getChannelData(c));
+
+                for (let i = 0; i < audioBuffer.length; i++) {
+                    for (let c = 0; c < numberOfChannels; c++) {
+                        const sample = Math.max(-1, Math.min(1, channels[c][i]));
+                        view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
+                        offset += 2;
+                    }
+                }
+                return new Blob([buffer], { type: 'audio/wav' });
+            };
+
+            const cutAudioSegment = async (mode) => {
+                const { start, end, duration } = normalizeTrimValues();
+                if (!duration) throw new Error('Carga primero el audio');
+                if ((end - start) < 0.05) throw new Error('Selecciona un tramo más amplio');
+
+                const localCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const arrayBuffer = await readBlobAsArrayBuffer(workingBlob);
+                const decoded = await localCtx.decodeAudioData(arrayBuffer.slice(0));
+                const sr = decoded.sampleRate;
+                const from = Math.floor(start * sr);
+                const to = Math.floor(end * sr);
+
+                let outputLength = 0;
+                if (mode === 'keep-only') outputLength = Math.max(1, to - from);
+                else outputLength = Math.max(1, decoded.length - (to - from));
+
+                const out = localCtx.createBuffer(decoded.numberOfChannels, outputLength, sr);
+
+                for (let c = 0; c < decoded.numberOfChannels; c++) {
+                    const source = decoded.getChannelData(c);
+                    const target = out.getChannelData(c);
+                    if (mode === 'keep-only') {
+                        target.set(source.subarray(from, to), 0);
+                    } else {
+                        target.set(source.subarray(0, from), 0);
+                        target.set(source.subarray(to), from);
+                    }
+                }
+
+                localCtx.close();
+                return encodeWav(out);
             };
 
             controls.addEventListener('input', (event) => {
@@ -971,6 +1198,28 @@
                 player.playbackRate = baseRate * Math.pow(2, detuneCents / 1200);
             });
 
+            trimControls.addEventListener('input', (event) => {
+                const input = event.target;
+                if (!(input instanceof HTMLInputElement)) return;
+                const duration = Number.isFinite(player.duration) ? player.duration : 0;
+                if (!duration) return;
+                if (input.dataset.audioTrim === 'start-range') trimStartInput.value = ((Number(input.value) / 100) * duration).toFixed(2);
+                if (input.dataset.audioTrim === 'end-range') trimEndInput.value = ((Number(input.value) / 100) * duration).toFixed(2);
+                normalizeTrimValues();
+            });
+
+            trimControls.querySelectorAll('input[type="number"]').forEach(inp => inp.addEventListener('change', normalizeTrimValues));
+
+            player.addEventListener('loadedmetadata', syncTrimFromDuration);
+            player.addEventListener('timeupdate', () => {
+                if (!trimLoop) return;
+                if (player.currentTime >= trimLoop.end) player.currentTime = trimLoop.start;
+            });
+            player.addEventListener('seeked', () => {
+                if (!trimLoop) return;
+                if (player.currentTime < trimLoop.start || player.currentTime > trimLoop.end) player.currentTime = trimLoop.start;
+            });
+
             actions.addEventListener('click', async (event) => {
                 const btn = event.target.closest('button[data-audio-action]');
                 if (!btn) return;
@@ -984,17 +1233,50 @@
                         UIManager.showToast('No se pudo activar audio: ' + e.message, true);
                     }
                 }
+
+                if (action === 'preview-trim') {
+                    const { start, end } = normalizeTrimValues();
+                    if (end <= start) {
+                        UIManager.showToast('Rango inválido', true);
+                        return;
+                    }
+                    trimLoop = { start, end };
+                    player.currentTime = start;
+                    player.play().catch(() => {});
+                    UIManager.showToast(`Previsualizando ${start.toFixed(1)}s a ${end.toFixed(1)}s`);
+                }
+
+                if (action === 'cut-out' || action === 'keep-only') {
+                    try {
+                        const mode = action === 'cut-out' ? 'remove-range' : 'keep-only';
+                        const processed = await cutAudioSegment(mode);
+                        workingBlob = processed;
+                        setPlayerBlob(workingBlob);
+                        trimLoop = null;
+                        player.addEventListener('loadedmetadata', () => {
+                            trimStartInput.value = '0';
+                            trimEndInput.value = '0';
+                            syncTrimFromDuration();
+                            normalizeTrimValues();
+                        }, { once: true });
+                        UIManager.showToast(action === 'cut-out' ? 'Trozo eliminado' : 'Trozo conservado');
+                    } catch (e) {
+                        UIManager.showToast(`No se pudo editar el audio: ${e.message}`, true);
+                    }
+                }
+
                 if (action === 'download') {
-                    const url = URL.createObjectURL(file.blob);
+                    const url = URL.createObjectURL(workingBlob);
                     const a = document.createElement('a');
                     a.href = url;
-                    a.download = `edited_${file.name.replace(/\.[^.]+$/, '')}.${ext}`;
+                    const extOut = workingBlob.type === 'audio/wav' ? 'wav' : ext;
+                    a.download = `edited_${file.name.replace(/\.[^.]+$/, '')}.${extOut}`;
                     a.click();
                     setTimeout(() => URL.revokeObjectURL(url), 1200);
                 }
             });
 
-            shell.append(player, controls, actions);
+            shell.append(player, controls, trimControls, actions);
             container.appendChild(shell);
             return container;
         }
