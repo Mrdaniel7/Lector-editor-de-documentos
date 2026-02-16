@@ -793,40 +793,22 @@
         }
 
         static async createPdfView(file) {
-            await PluginLoader.load('pdfjs'); pdfjsLib.GlobalWorkerOptions.workerSrc = PluginLoader.sources.pdfjsWorker;
-            const ctr = document.createElement('div'); ctr.className = 'content-scroll'; ctr.id = 'pdf-container'; ctr.style.cssText = 'background:#222;padding:20px;display:flex;flex-direction:column;align-items:center;gap:20px;';
-            const tb = document.createElement('div'); tb.className = 'floating-toolbar';
-            tb.innerHTML = `<button id="pdf-hand" class="active"><i class="fa-solid fa-hand"></i></button><button id="pdf-draw"><i class="fa-solid fa-paintbrush"></i></button><button id="pdf-text"><i class="fa-solid fa-font"></i></button>`;
-            ctr.appendChild(tb);
-            
+            const ctr = document.createElement('div');
+            ctr.className = 'content-scroll';
+            ctr.id = 'pdf-container';
+            ctr.style.cssText = 'background:var(--bg-panel);padding:16px;height:100%;';
+
+            const hint = document.createElement('div');
+            hint.style.cssText = 'margin-bottom:12px;color:var(--text-secondary);font-size:13px;';
+            hint.innerHTML = '<i class="fa-brands fa-firefox-browser"></i> Vista en iframe: el PDF se abre con el visor nativo del navegador (en Firefox incluye su editor de PDF).';
+
+            const frame = document.createElement('iframe');
+            frame.style.cssText = 'width:100%;height:calc(100% - 30px);border:1px solid var(--border);border-radius:8px;background:#fff;';
+            frame.src = URL.createObjectURL(file.blob);
+            frame.title = `Editor PDF - ${file.name}`;
+
             App.instance.currentEditor = null; // No Monaco in PDF view
-
-            let mode = 'hand';
-            const setMode = (m, btn) => { mode = m; tb.querySelectorAll('button').forEach(b => b.classList.remove('active')); btn.classList.add('active'); ctr.querySelectorAll('.pdf-page-wrapper').forEach(w => { w.classList.toggle('draw-mode', m === 'draw'); w.style.cursor = m === 'text' ? 'text' : (m === 'hand' ? 'grab' : 'crosshair'); }); };
-            tb.querySelector('#pdf-hand').onclick = e => setMode('hand', e.currentTarget); tb.querySelector('#pdf-draw').onclick = e => setMode('draw', e.currentTarget); tb.querySelector('#pdf-text').onclick = e => setMode('text', e.currentTarget);
-
-            const pdf = await pdfjsLib.getDocument(URL.createObjectURL(file.blob)).promise;
-            for(let i=1; i<=pdf.numPages; i++) {
-                const page = await pdf.getPage(i); const vp = page.getViewport({scale: 1.2});
-                const wrp = document.createElement('div'); wrp.className = 'pdf-page-wrapper'; wrp.style.cssText = `position:relative;box-shadow:0 5px 15px rgba(0,0,0,0.5);width:${vp.width}px;height:${vp.height}px;`;
-                const cvs = document.createElement('canvas'); cvs.width = vp.width; cvs.height = vp.height; 
-                const drawCvs = document.createElement('canvas'); drawCvs.className = 'pdf-canvas-layer'; drawCvs.width = vp.width; drawCvs.height = vp.height;
-                wrp.append(cvs, drawCvs); ctr.appendChild(wrp); page.render({canvasContext: cvs.getContext('2d'), viewport: vp});
-
-                const ctx = drawCvs.getContext('2d'); ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.strokeStyle = '#ef4444'; let drawing = false;
-                drawCvs.onmousedown = e => { if(mode==='draw') { drawing=true; ctx.beginPath(); ctx.moveTo(e.offsetX, e.offsetY); } };
-                drawCvs.onmousemove = e => { if(drawing && mode==='draw') { ctx.lineTo(e.offsetX, e.offsetY); ctx.stroke(); } };
-                drawCvs.onmouseup = () => drawing=false;
-
-                wrp.onclick = e => {
-                    if(mode === 'text' && !e.target.classList.contains('pdf-text-input')) {
-                        const inp = document.createElement('div'); inp.className = 'pdf-text-input'; inp.contentEditable = true;
-                        inp.style.left = e.offsetX + 'px'; inp.style.top = e.offsetY + 'px';
-                        wrp.appendChild(inp); inp.focus();
-                        inp.onblur = () => { if(!inp.innerText.trim()) inp.remove(); else { inp.style.border='none'; inp.style.background='transparent'; inp.contentEditable=false; } };
-                    }
-                };
-            }
+            ctr.append(hint, frame);
             return ctr;
         }
 
