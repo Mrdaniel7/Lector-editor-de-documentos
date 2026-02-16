@@ -274,7 +274,7 @@
     <!-- Modals -->
     <div class="cmd-backdrop" id="cmd-backdrop"><div class="cmd-palette"><div class="cmd-input-wrapper"><i class="fa-solid fa-magnifying-glass" style="color:var(--accent)"></i><input type="text" id="cmd-input" placeholder="Comando..." autocomplete="off"></div><ul class="cmd-list" id="cmd-list"></ul></div></div>
     <div class="modal-backdrop" id="generic-modal" style="display:none;"><div class="modal"><div class="modal-header"><span id="generic-modal-title">Título</span><button onclick="UIManager.closeModal()" style="border:none;background:none;color:var(--text-muted);cursor:pointer;"><i class="fa-solid fa-xmark"></i></button></div><div class="modal-body" id="generic-modal-body"></div></div></div>
-    <div class="modal-backdrop" id="settings-modal" style="display:none;"><div class="modal"><div class="modal-header"><span>Configuración</span><button onclick="SettingsManager.close()" style="border:none;background:none;color:var(--text-muted);cursor:pointer;"><i class="fa-solid fa-xmark"></i></button></div><div class="modal-body"><div style="margin-bottom:20px;"><label style="display:block;margin-bottom:8px;font-size:12px;text-transform:uppercase;">Fuente</label><select onchange="SettingsManager.updateFont(this.value)" style="width:100%;padding:8px;background:var(--bg-input);color:white;border:1px solid var(--border);border-radius:6px;"><option value="'JetBrains Mono', monospace">JetBrains Mono</option><option value="'Fira Code', monospace">Fira Code</option></select></div><div style="margin-bottom:20px;"><label style="display:block;margin-bottom:8px;font-size:12px;text-transform:uppercase;">Tamaño</label><input type="range" min="10" max="24" value="14" oninput="SettingsManager.updateFontSize(this.value, 'editor')" style="width:100%;"></div><button onclick="SettingsManager.executePanic()" style="width:100%;padding:12px;background:rgba(239,68,68,0.1);color:var(--error);border:1px solid var(--error);border-radius:8px;cursor:pointer;">Restablecer</button></div></div></div>
+    <div class="modal-backdrop" id="settings-modal" style="display:none;"><div class="modal"><div class="modal-header"><span>Configuración</span><button onclick="SettingsManager.close()" style="border:none;background:none;color:var(--text-muted);cursor:pointer;"><i class="fa-solid fa-xmark"></i></button></div><div class="modal-body"><div style="margin-bottom:20px;"><label style="display:block;margin-bottom:8px;font-size:12px;text-transform:uppercase;">Fuente</label><select onchange="SettingsManager.updateFont(this.value)" style="width:100%;padding:8px;background:var(--bg-input);color:white;border:1px solid var(--border);border-radius:6px;"><option value="'JetBrains Mono', monospace">JetBrains Mono</option><option value="'Fira Code', monospace">Fira Code</option></select></div><div style="margin-bottom:20px;"><label style="display:block;margin-bottom:8px;font-size:12px;text-transform:uppercase;">Tamaño</label><input type="range" min="10" max="24" value="14" oninput="SettingsManager.updateFontSize(this.value, 'editor')" style="width:100%;"></div><div style="margin-bottom:20px;"><label style="display:block;margin-bottom:8px;font-size:12px;text-transform:uppercase;">Endpoint Piston (opcional)</label><input id="runner-endpoint-input" type="text" placeholder="https://tu-piston.example/api/v2/execute" onblur="SettingsManager.updateRunnerEndpoint(this.value)" style="width:100%;padding:8px;background:var(--bg-input);color:white;border:1px solid var(--border);border-radius:6px;"><div style="font-size:12px;color:var(--text-muted);margin-top:6px;">La API pública de emkc.org ahora requiere whitelist. Configura aquí tu endpoint propio para compilar y ejecutar.</div></div><button onclick="SettingsManager.executePanic()" style="width:100%;padding:12px;background:rgba(239,68,68,0.1);color:var(--error);border:1px solid var(--error);border-radius:8px;cursor:pointer;">Restablecer</button></div></div></div>
     <div class="zoom-float" id="zoom-float">100%</div>
 
   <input type="file" id="file-input" class="hidden" multiple />
@@ -333,8 +333,21 @@
         static close() { document.getElementById('settings-modal').style.display = 'none'; }
         static updateFont(f) { document.documentElement.style.setProperty('--font-code', f); localStorage.setItem('pref_font', f); }
         static updateFontSize(s, t) { document.documentElement.style.setProperty(t === 'ui' ? '--ui-font-size' : '--editor-font-size', s + 'px'); }
+        static updateRunnerEndpoint(endpoint) {
+            const cleanEndpoint = (endpoint || '').trim().replace(/\/+$/, '');
+            if (cleanEndpoint) {
+                localStorage.setItem('runner_endpoint', cleanEndpoint);
+            } else {
+                localStorage.removeItem('runner_endpoint');
+            }
+        }
         static async executePanic() { await FileSystem.clear(); localStorage.clear(); location.reload(); }
-        static loadDefaults() { const f = localStorage.getItem('pref_font'); if(f) document.documentElement.style.setProperty('--font-code', f); }
+        static loadDefaults() {
+            const f = localStorage.getItem('pref_font');
+            if (f) document.documentElement.style.setProperty('--font-code', f);
+            const endpointInput = document.getElementById('runner-endpoint-input');
+            if (endpointInput) endpointInput.value = localStorage.getItem('runner_endpoint') || '';
+        }
     }
 
     class CompilerService {
@@ -350,7 +363,9 @@
                     content: code
                 }]
             };
+            const customEndpoint = (localStorage.getItem('runner_endpoint') || '').trim().replace(/\/+$/, '');
             const endpointVariants = [
+                ...(customEndpoint ? [customEndpoint] : []),
                 'https://emkc.org/api/v2/piston/execute',
                 'https://emkc.org/api/v2/execute'
             ];
@@ -361,6 +376,9 @@
                 }
                 if (status === 429) {
                     return ' El servicio está limitado por rate limit (429); intenta de nuevo en unos segundos.';
+                }
+                if (status === 401) {
+                    return ' El endpoint rechazó la solicitud (401). Si usas emkc.org, desde 2026 requiere whitelist; configura una instancia propia de Piston en Ajustes.';
                 }
                 if (status >= 500) {
                     return ' El proveedor remoto devolvió un error temporal del servidor.';
