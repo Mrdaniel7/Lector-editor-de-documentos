@@ -350,11 +350,15 @@
                     content: code
                 }]
             };
-            const endpoints = [
+            const baseEndpoints = [
                 'https://emkc.org/api/v2/piston/execute',
                 'https://emkc.org/api/v2/execute',
                 'https://piston.rs/api/v2/execute'
             ];
+            const endpointVariants = baseEndpoints.flatMap(endpoint => ([
+                endpoint,
+                `https://corsproxy.io/?${encodeURIComponent(endpoint)}`
+            ]));
 
             const buildApiError = (status, body, endpoint) => ({
                 stdout: '',
@@ -362,40 +366,68 @@
                 code: 1
             });
 
+            const parseJsonSafe = (raw) => {
+                try { return raw ? JSON.parse(raw) : null; } catch (_) { return null; }
+            };
+
+            const executeAgainstEndpoint = async (endpoint) => {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 20000);
+                try {
+                    const response = await fetch(endpoint, {
+                        method: 'POST',
+                        mode: 'cors',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload),
+                        signal: controller.signal
+                    });
+
+                    const raw = await response.text();
+                    const data = parseJsonSafe(raw);
+                    return { ok: response.ok, status: response.status, data, raw, endpoint };
+                } finally {
+                    clearTimeout(timeoutId);
+                }
+            };
+
             try {
-                for (const endpoint of endpoints) {
+                let lastApiError = null;
+                let lastNetworkError = null;
+
+                for (const endpoint of endpointVariants) {
                     try {
-                        const response = await fetch(endpoint, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(payload)
-                        });
+                        const result = await executeAgainstEndpoint(endpoint);
 
-                        const raw = await response.text();
-                        let data = null;
-                        try { data = raw ? JSON.parse(raw) : null; } catch (_) { data = null; }
-
-                        if (!response.ok) {
-                            if (endpoint !== endpoints[endpoints.length - 1]) continue;
-                            const detail = data?.message || data?.error || data?.detail || raw;
-                            return buildApiError(response.status, detail, endpoint);
+                        if (!result.ok) {
+                            const detail = result.data?.message || result.data?.error || result.data?.detail || result.raw;
+                            lastApiError = buildApiError(result.status, detail, endpoint);
+                            continue;
                         }
 
-                        if (data?.run || data?.compile) {
+                        if (result.data?.run || result.data?.compile) {
                             return {
-                                stdout: [data?.compile?.stdout, data?.run?.stdout].filter(Boolean).join(''),
-                                stderr: [data?.compile?.stderr, data?.run?.stderr].filter(Boolean).join(''),
-                                code: data?.run?.code ?? data?.compile?.code ?? 0
+                                stdout: [result.data?.compile?.stdout, result.data?.run?.stdout].filter(Boolean).join(''),
+                                stderr: [result.data?.compile?.stderr, result.data?.run?.stderr].filter(Boolean).join(''),
+                                code: result.data?.run?.code ?? result.data?.compile?.code ?? 0
                             };
                         }
 
-                        const detail = data?.message || data?.error || data?.detail || raw;
+                        const detail = result.data?.message || result.data?.error || result.data?.detail || result.raw;
                         if (detail) {
-                            return { stdout: '', stderr: `Error de API: ${detail}`, code: 1 };
+                            lastApiError = { stdout: '', stderr: `Error de API en ${endpoint}: ${detail}`, code: 1 };
                         }
-                    } catch (_) {
-                        if (endpoint === endpoints[endpoints.length - 1]) throw _;
+                    } catch (error) {
+                        lastNetworkError = error;
                     }
+                }
+
+                if (lastApiError) return lastApiError;
+                if (lastNetworkError) {
+                    return {
+                        stdout: '',
+                        stderr: 'Error de conexión: ' + lastNetworkError.message + '. Revisa conectividad o bloqueo CORS/firewall para las APIs externas.',
+                        code: 1
+                    };
                 }
 
                 return { stdout: '', stderr: 'Error desconocido en la API', code: 1 };
