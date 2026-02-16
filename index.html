@@ -1746,6 +1746,13 @@ function saludar() {
             const baseName = file.name.replace(/\.[^.]+$/, '');
             const textFormats = ['md', 'markdown', 'html', 'js', 'py', 'txt', 'css', 'json', 'java', 'cpp', 'ts', 'xml', 'yaml', 'yml'];
             const isOffice = ['docx', 'odt'].includes(ext);
+            const hasHtmlShell = (value) => /<html[\s>]/i.test(value);
+
+            const ensureUtf8Bom = (value) => value.startsWith('\uFEFF') ? value : `\uFEFF${value}`;
+            const normalizeTextMime = (mime = 'text/plain') => {
+                const cleaned = mime.split(';')[0] || 'text/plain';
+                return `${cleaned};charset=utf-8`;
+            };
 
             const downloadBlob = (blob, downloadName) => {
                 const url = URL.createObjectURL(blob);
@@ -1768,10 +1775,16 @@ function saludar() {
                 return `<pre>${(await file.blob.text()).replace(/[&<>]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[s]))}</pre>`;
             };
 
+            const wrapHtmlDocument = (bodyMarkup) => {
+                if (hasHtmlShell(bodyMarkup)) return bodyMarkup;
+                return `<!doctype html><html><head><meta charset="utf-8"><title>${baseName}</title><style>body{font-family:Arial,Helvetica,sans-serif;padding:24px;line-height:1.6;color:#111}img{max-width:100%;height:auto}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:8px;text-align:left}pre{white-space:pre-wrap;word-break:break-word}</style></head><body>${bodyMarkup}</body></html>`;
+            };
+
             if (exportType === 'raw') {
-                if (file.contentRef && textFormats.includes(ext)) {
-                    const mime = file.blob.type || 'text/plain;charset=utf-8';
-                    downloadBlob(new Blob([file.contentRef], { type: mime }), file.name);
+                if (textFormats.includes(ext)) {
+                    const sourceText = file.contentRef || await file.blob.text();
+                    const mime = normalizeTextMime(file.blob.type || 'text/plain');
+                    downloadBlob(new Blob([ensureUtf8Bom(sourceText)], { type: mime }), file.name);
                 } else {
                     downloadBlob(file.blob, file.name);
                 }
@@ -1781,14 +1794,14 @@ function saludar() {
 
             if (exportType === 'src') {
                 const source = file.contentRef || await file.blob.text();
-                downloadBlob(new Blob([source], { type: 'text/plain;charset=utf-8' }), `${baseName}.txt`);
+                downloadBlob(new Blob([ensureUtf8Bom(source)], { type: 'text/plain;charset=utf-8' }), `${baseName}.txt`);
                 UIManager.showToast('Código fuente exportado');
                 return;
             }
 
             if (exportType === 'html') {
-                const html = await resolveHtmlSnapshot();
-                downloadBlob(new Blob([html], { type: 'text/html;charset=utf-8' }), `${baseName}.html`);
+                const html = wrapHtmlDocument(await resolveHtmlSnapshot());
+                downloadBlob(new Blob([ensureUtf8Bom(html)], { type: 'text/html;charset=utf-8' }), `${baseName}.html`);
                 UIManager.showToast('Documento HTML exportado');
                 return;
             }
@@ -1800,13 +1813,13 @@ function saludar() {
                     return;
                 }
 
-                const html = await resolveHtmlSnapshot();
+                const html = wrapHtmlDocument(await resolveHtmlSnapshot());
                 const win = window.open('', '_blank');
                 if (!win) {
                     UIManager.showToast('El navegador bloqueó la ventana para imprimir PDF', true);
                     return;
                 }
-                win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${baseName}</title></head><body>${html}</body></html>`);
+                win.document.write(html);
                 win.document.close();
                 win.focus();
                 setTimeout(() => win.print(), 300);
