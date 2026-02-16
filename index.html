@@ -343,6 +343,7 @@
     }
 
     class SettingsManager {
+        static themeStorageKey = 'pref_theme';
         static open() { document.getElementById('settings-modal').style.display = 'flex'; }
         static close() { document.getElementById('settings-modal').style.display = 'none'; }
         static updateFont(f) { document.documentElement.style.setProperty('--font-code', f); localStorage.setItem('pref_font', f); }
@@ -367,6 +368,10 @@
         static loadDefaults() {
             const f = localStorage.getItem('pref_font');
             if (f) document.documentElement.style.setProperty('--font-code', f);
+            const savedTheme = localStorage.getItem(this.themeStorageKey);
+            if (savedTheme === 'light' || savedTheme === 'dark') {
+                document.documentElement.setAttribute('data-theme', savedTheme);
+            }
             const endpointInput = document.getElementById('runner-endpoint-input');
             if (endpointInput) endpointInput.value = localStorage.getItem('runner_endpoint') || '';
             const judge0Input = document.getElementById('judge0-endpoint-input');
@@ -1625,7 +1630,9 @@
     }
 
     class App {
-        constructor() { this.openTabs = []; this.activeTab = null; this.currentEditor = null; this.bindEvents(); this.restoreSession(); SettingsManager.loadDefaults(); }
+        static sessionStorageKey = 'gentledoc_session_v1';
+        static legacySessionStorageKey = 'hacker_session_v2';
+        constructor() { this.openTabs = []; this.activeTab = null; this.currentEditor = null; this.bindEvents(); SettingsManager.loadDefaults(); this.restoreSession(); }
         static get instance() { if(!window.__app) window.__app = new App(); return window.__app; }
         
         bindEvents() { 
@@ -1888,23 +1895,45 @@ function saludar() {
         closeTab(id) { this.openTabs = this.openTabs.filter(t => t.id !== id); if(this.activeTab?.id === id) { this.activeTab = this.openTabs[0] || null; if(this.activeTab) this.activateTab(this.activeTab.id); else { document.getElementById('content-scroll').innerHTML = ''; document.getElementById('welcome-msg').classList.remove('hidden'); this.updateRecents(); } } this.renderTabs(); this.saveSession(); }
         
         async updateRecents() { const files = await FileSystem.getAll(); const list = document.getElementById('welcome-recents-list'); list.innerHTML = ''; files.slice(-5).reverse().forEach(f => { const div = document.createElement('div'); div.className = 'welcome-recent-item'; div.innerHTML = `<span><i class="fa-solid fa-file"></i> ${f.name}</span> <span style="font-size:11px;color:gray">${(f.blob.size/1024).toFixed(1)} KB</span>`; div.onclick = () => { if(!this.openTabs.find(t=>t.id===f.id)) this.openTabs.push(f); this.activateTab(f.id); }; list.appendChild(div); }); }
-        saveSession() { localStorage.setItem('hacker_session_v2', JSON.stringify(this.openTabs.map(t => t.id))); }
+        saveSession() {
+            const ids = this.openTabs.map(t => t.id);
+            localStorage.setItem(App.sessionStorageKey, JSON.stringify(ids));
+            // Compatibilidad retroactiva con sesiones guardadas en versiones anteriores.
+            localStorage.setItem(App.legacySessionStorageKey, JSON.stringify(ids));
+        }
         
         async restoreSession() {
             await this.updateRecents();
-            const sessionIds = JSON.parse(localStorage.getItem('hacker_session_v2') || '[]');
-            if (sessionIds.length > 0) {
-                for (const id of sessionIds) {
+            const parseSessionIds = (raw) => {
+                try {
+                    const parsed = raw ? JSON.parse(raw) : [];
+                    return Array.isArray(parsed) ? parsed : [];
+                } catch (_) {
+                    return [];
+                }
+            };
+
+            const sessionIds = parseSessionIds(localStorage.getItem(App.sessionStorageKey));
+            const legacySessionIds = parseSessionIds(localStorage.getItem(App.legacySessionStorageKey));
+            const idsToRestore = [...new Set([...(sessionIds.length ? sessionIds : legacySessionIds)])];
+
+            if (idsToRestore.length > 0) {
+                for (const id of idsToRestore) {
                     const file = await FileSystem.getFile(id);
                     if (file) this.openTabs.push(file);
                 }
                 if (this.openTabs.length > 0) {
                     this.activateTab(this.openTabs[0].id);
                 }
+                this.saveSession();
             }
         }
-        
-        toggleTheme() { document.documentElement.setAttribute('data-theme', document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light'); }
+
+        toggleTheme() {
+            const nextTheme = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', nextTheme);
+            localStorage.setItem(SettingsManager.themeStorageKey, nextTheme);
+        }
         
         // --- FIXED SAVE LOGIC FOR PWA PERSISTENCE ---
         async saveCurrent() { 
