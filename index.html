@@ -274,7 +274,7 @@
     <!-- Modals -->
     <div class="cmd-backdrop" id="cmd-backdrop"><div class="cmd-palette"><div class="cmd-input-wrapper"><i class="fa-solid fa-magnifying-glass" style="color:var(--accent)"></i><input type="text" id="cmd-input" placeholder="Comando..." autocomplete="off"></div><ul class="cmd-list" id="cmd-list"></ul></div></div>
     <div class="modal-backdrop" id="generic-modal" style="display:none;"><div class="modal"><div class="modal-header"><span id="generic-modal-title">Título</span><button onclick="UIManager.closeModal()" style="border:none;background:none;color:var(--text-muted);cursor:pointer;"><i class="fa-solid fa-xmark"></i></button></div><div class="modal-body" id="generic-modal-body"></div></div></div>
-    <div class="modal-backdrop" id="settings-modal" style="display:none;"><div class="modal"><div class="modal-header"><span>Configuración</span><button onclick="SettingsManager.close()" style="border:none;background:none;color:var(--text-muted);cursor:pointer;"><i class="fa-solid fa-xmark"></i></button></div><div class="modal-body"><div style="margin-bottom:20px;"><label style="display:block;margin-bottom:8px;font-size:12px;text-transform:uppercase;">Fuente</label><select onchange="SettingsManager.updateFont(this.value)" style="width:100%;padding:8px;background:var(--bg-input);color:white;border:1px solid var(--border);border-radius:6px;"><option value="'JetBrains Mono', monospace">JetBrains Mono</option><option value="'Fira Code', monospace">Fira Code</option></select></div><div style="margin-bottom:20px;"><label style="display:block;margin-bottom:8px;font-size:12px;text-transform:uppercase;">Tamaño</label><input type="range" min="10" max="24" value="14" oninput="SettingsManager.updateFontSize(this.value, 'editor')" style="width:100%;"></div><div style="margin-bottom:20px;"><label style="display:block;margin-bottom:8px;font-size:12px;text-transform:uppercase;">Endpoint Piston (opcional)</label><input id="runner-endpoint-input" type="text" placeholder="https://tu-piston.example/api/v2/execute" onblur="SettingsManager.updateRunnerEndpoint(this.value)" style="width:100%;padding:8px;background:var(--bg-input);color:white;border:1px solid var(--border);border-radius:6px;"><div style="font-size:12px;color:var(--text-muted);margin-top:6px;">La API pública de emkc.org ahora requiere whitelist. Configura aquí tu endpoint propio para compilar y ejecutar.</div></div><button onclick="SettingsManager.executePanic()" style="width:100%;padding:12px;background:rgba(239,68,68,0.1);color:var(--error);border:1px solid var(--error);border-radius:8px;cursor:pointer;">Restablecer</button></div></div></div>
+    <div class="modal-backdrop" id="settings-modal" style="display:none;"><div class="modal"><div class="modal-header"><span>Configuración</span><button onclick="SettingsManager.close()" style="border:none;background:none;color:var(--text-muted);cursor:pointer;"><i class="fa-solid fa-xmark"></i></button></div><div class="modal-body"><div style="margin-bottom:20px;"><label style="display:block;margin-bottom:8px;font-size:12px;text-transform:uppercase;">Fuente</label><select onchange="SettingsManager.updateFont(this.value)" style="width:100%;padding:8px;background:var(--bg-input);color:white;border:1px solid var(--border);border-radius:6px;"><option value="'JetBrains Mono', monospace">JetBrains Mono</option><option value="'Fira Code', monospace">Fira Code</option></select></div><div style="margin-bottom:20px;"><label style="display:block;margin-bottom:8px;font-size:12px;text-transform:uppercase;">Tamaño</label><input type="range" min="10" max="24" value="14" oninput="SettingsManager.updateFontSize(this.value, 'editor')" style="width:100%;"></div><div style="margin-bottom:20px;"><label style="display:block;margin-bottom:8px;font-size:12px;text-transform:uppercase;">Endpoint Piston (opcional)</label><input id="runner-endpoint-input" type="text" placeholder="https://tu-piston.example/api/v2/execute" onblur="SettingsManager.updateRunnerEndpoint(this.value)" style="width:100%;padding:8px;background:var(--bg-input);color:white;border:1px solid var(--border);border-radius:6px;"><div style="font-size:12px;color:var(--text-muted);margin-top:6px;">La API pública de emkc.org ahora requiere whitelist. Configura aquí tu endpoint propio para compilar y ejecutar.</div></div><div style="margin-bottom:20px;"><label style="display:block;margin-bottom:8px;font-size:12px;text-transform:uppercase;">Endpoint Judge0 (opcional)</label><input id="judge0-endpoint-input" type="text" placeholder="https://ce.judge0.com" onblur="SettingsManager.updateJudge0Endpoint(this.value)" style="width:100%;padding:8px;background:var(--bg-input);color:white;border:1px solid var(--border);border-radius:6px;"><div style="font-size:12px;color:var(--text-muted);margin-top:6px;">Fallback gratuito para Python/Java (requiere que tu instancia permita CORS).</div></div><button onclick="SettingsManager.executePanic()" style="width:100%;padding:12px;background:rgba(239,68,68,0.1);color:var(--error);border:1px solid var(--error);border-radius:8px;cursor:pointer;">Restablecer</button></div></div></div>
     <div class="zoom-float" id="zoom-float">100%</div>
 
   <input type="file" id="file-input" class="hidden" multiple />
@@ -341,16 +341,65 @@
                 localStorage.removeItem('runner_endpoint');
             }
         }
+        static updateJudge0Endpoint(endpoint) {
+            const cleanEndpoint = (endpoint || '').trim().replace(/\/+$/, '');
+            if (cleanEndpoint) {
+                localStorage.setItem('judge0_endpoint', cleanEndpoint);
+            } else {
+                localStorage.removeItem('judge0_endpoint');
+            }
+        }
         static async executePanic() { await FileSystem.clear(); localStorage.clear(); location.reload(); }
         static loadDefaults() {
             const f = localStorage.getItem('pref_font');
             if (f) document.documentElement.style.setProperty('--font-code', f);
             const endpointInput = document.getElementById('runner-endpoint-input');
             if (endpointInput) endpointInput.value = localStorage.getItem('runner_endpoint') || '';
+            const judge0Input = document.getElementById('judge0-endpoint-input');
+            if (judge0Input) judge0Input.value = localStorage.getItem('judge0_endpoint') || '';
         }
     }
 
     class CompilerService {
+        static async executeViaJudge0(language, code, baseEndpoint) {
+            const endpoint = (baseEndpoint || '').trim().replace(/\/+$/, '');
+            if (!endpoint) throw new Error('Endpoint Judge0 no configurado');
+
+            const langToId = { py: 71, python: 71, java: 62 };
+            const languageId = langToId[language];
+            if (!languageId) {
+                throw new Error('Judge0 fallback solo soporta Python y Java en esta versión.');
+            }
+
+            const payload = { source_code: code, language_id: languageId, stdin: '' };
+            const submit = await fetch(`${endpoint}/submissions?base64_encoded=false&wait=true`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const raw = await submit.text();
+            let data = null;
+            try { data = raw ? JSON.parse(raw) : null; } catch (_) { data = null; }
+
+            if (!submit.ok) {
+                const detail = data?.message || data?.error || data?.detail || raw || 'sin detalles';
+                return { stdout: '', stderr: `Error Judge0 (${submit.status}) en ${endpoint}: ${detail}`, code: 1 };
+            }
+
+            const decode = (value) => value || '';
+            const stdout = decode(data?.stdout);
+            const stderr = decode(data?.stderr);
+            const compile = decode(data?.compile_output);
+            const statusId = data?.status?.id;
+            const codeOut = statusId === 3 ? 0 : 1;
+            return {
+                stdout,
+                stderr: [compile, stderr].filter(Boolean).join(''),
+                code: codeOut
+            };
+        }
+
         static async execute(language, code) {
             const langMap = { 'java': 'java', 'py': 'python', 'cpp': 'cpp', 'js': 'javascript', 'c': 'c', 'go': 'go', 'cs': 'csharp', 'php': 'php', 'rs': 'rust' };
             const lang = langMap[language] || language;
@@ -364,6 +413,7 @@
                 }]
             };
             const customEndpoint = (localStorage.getItem('runner_endpoint') || '').trim().replace(/\/+$/, '');
+            const judge0Endpoint = (localStorage.getItem('judge0_endpoint') || '').trim().replace(/\/+$/, '');
             const endpointVariants = [
                 ...(customEndpoint ? [customEndpoint] : []),
                 'https://emkc.org/api/v2/piston/execute',
@@ -444,6 +494,20 @@
                         }
                     } catch (error) {
                         lastNetworkError = error;
+                    }
+                }
+
+                const canUseJudge0 = ['py', 'java'].includes(language);
+                if (judge0Endpoint && canUseJudge0) {
+                    try {
+                        return await this.executeViaJudge0(language, code, judge0Endpoint);
+                    } catch (judgeErr) {
+                        const extra = judgeErr?.message ? ` Fallback Judge0 falló: ${judgeErr.message}` : '';
+                        if (lastApiError) {
+                            lastApiError.stderr += extra;
+                            return lastApiError;
+                        }
+                        return { stdout: '', stderr: `Error Judge0: ${judgeErr.message}`, code: 1 };
                     }
                 }
 
