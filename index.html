@@ -853,20 +853,24 @@
                 if (cropBtn) cropBtn.classList.toggle('active', cropMode);
             };
 
+            const renderBaseImage = (targetCtx, width, height) => {
+                targetCtx.save();
+                targetCtx.clearRect(0, 0, width, height);
+                targetCtx.filter = `brightness(${state.brightness}%) contrast(${state.contrast}%)`;
+                targetCtx.translate(width / 2, height / 2);
+                targetCtx.rotate((state.rotation * Math.PI) / 180);
+                targetCtx.scale(state.flipX, state.flipY);
+                targetCtx.drawImage(imageSource, -imageSource.width / 2, -imageSource.height / 2);
+                targetCtx.restore();
+            };
+
             const draw = () => {
                 if (!imageSource || !imageSource.width || !imageSource.height) return;
                 const rightAngle = Math.abs(state.rotation % 180) === 90;
                 canvas.width = rightAngle ? imageSource.height : imageSource.width;
                 canvas.height = rightAngle ? imageSource.width : imageSource.height;
 
-                ctx.save();
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                ctx.filter = `brightness(${state.brightness}%) contrast(${state.contrast}%)`;
-                ctx.translate(canvas.width / 2, canvas.height / 2);
-                ctx.rotate((state.rotation * Math.PI) / 180);
-                ctx.scale(state.flipX, state.flipY);
-                ctx.drawImage(imageSource, -imageSource.width / 2, -imageSource.height / 2);
-                ctx.restore();
+                renderBaseImage(ctx, canvas.width, canvas.height);
 
                 if (cropMode && cropRect) {
                     const { x, y, width, height } = cropRect;
@@ -943,11 +947,17 @@
                     if (!cropRect || cropRect.width < 2 || cropRect.height < 2) {
                         UIManager.showToast('Selecciona una zona para recortar', true);
                     } else {
+                        const sourceCanvas = document.createElement('canvas');
+                        sourceCanvas.width = canvas.width;
+                        sourceCanvas.height = canvas.height;
+                        const sourceCtx = sourceCanvas.getContext('2d');
+                        renderBaseImage(sourceCtx, sourceCanvas.width, sourceCanvas.height);
+
                         const tmp = document.createElement('canvas');
                         tmp.width = Math.floor(cropRect.width);
                         tmp.height = Math.floor(cropRect.height);
                         const tmpCtx = tmp.getContext('2d');
-                        tmpCtx.drawImage(canvas, cropRect.x, cropRect.y, cropRect.width, cropRect.height, 0, 0, tmp.width, tmp.height);
+                        tmpCtx.drawImage(sourceCanvas, cropRect.x, cropRect.y, cropRect.width, cropRect.height, 0, 0, tmp.width, tmp.height);
                         const cropped = new Image();
                         cropped.onload = () => {
                             imageSource = cropped;
@@ -977,8 +987,14 @@
                     toolbar.querySelector('[data-filter="contrast"]').value = '100';
                 }
                 if (action === 'download') {
+                    const exportCanvas = document.createElement('canvas');
+                    exportCanvas.width = canvas.width;
+                    exportCanvas.height = canvas.height;
+                    const exportCtx = exportCanvas.getContext('2d');
+                    renderBaseImage(exportCtx, exportCanvas.width, exportCanvas.height);
+
                     const a = document.createElement('a');
-                    a.href = canvas.toDataURL('image/png');
+                    a.href = exportCanvas.toDataURL('image/png');
                     a.download = `edited_${file.name.replace(/\.[^.]+$/, '')}.png`;
                     a.click();
                 }
