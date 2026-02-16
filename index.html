@@ -800,7 +800,7 @@
 
             const hint = document.createElement('div');
             hint.style.cssText = 'margin-bottom:12px;color:var(--text-secondary);font-size:13px;';
-            hint.innerHTML = '<i class="fa-brands fa-firefox-browser"></i> Vista en iframe: el PDF se abre con el visor nativo del navegador (en Firefox incluye su editor de PDF).';
+            hint.innerHTML = '<i class="fa-solid fa-file-pdf"></i> Vista previa del PDF.';
 
             const frame = document.createElement('iframe');
             frame.style.cssText = 'width:100%;height:calc(100% - 30px);border:1px solid var(--border);border-radius:8px;background:#fff;';
@@ -843,6 +843,7 @@
                 container.className = 'draft-grid'; 
                 const types = [
                     { id: 'md', label: 'Markdown', icon: 'fa-file-lines', color: '#3b82f6' }, 
+                    { id: 'txt', label: 'Texto plano', icon: 'fa-file-lines', color: '#94a3b8' },
                     { id: 'html', label: 'HTML', icon: 'fa-html5', color: '#e34f26' }, 
                     { id: 'js', label: 'JavaScript', icon: 'fa-js', color: '#f7df1e' }, 
                     { id: 'py', label: 'Python', icon: 'fa-python', color: '#3776ab' },
@@ -989,6 +990,7 @@
                 case 'js': content = '// JavaScript\nconsole.log("Hola Mundo");'; name = `script_${ts}.js`; mime = 'text/javascript'; break; 
                 case 'py': content = '# Python\nprint("Hola Mundo")'; name = `main_${ts}.py`; mime = 'text/x-python'; break; 
                 case 'java': content = 'public class Main {\n    public static void main(String[] args) {\n        System.out.println("Hola Mundo desde Java");\n    }\n}'; name = `Main_${ts}.java`; mime = 'text/x-java-source'; break;
+                case 'txt': content = 'Escribe aquí tu texto...'; name = `nota_${ts}.txt`; mime = 'text/plain'; break;
                 default: 
                     content = `# 🚀 Bienvenido a Hacker Elegante
 
