@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Hacker Elegante - DocViewer Pro v3.4</title>
+  <title>GentleDoc - Editor de Documentos</title>
   
   <!-- PWA Manifest -->
-  <link rel="manifest" href="data:application/manifest+json;base64,eyJuYW1lIjoiSGFja2VyIEVsZWdhbnRlIERvY1ZpZXdlciIsInNob3J0X25hbWUiOiJEb2NWaWV3ZXIiLCJzdGFydF91cmwiOiIuLyIsImRpc3BsYXkiOiJzdGFuZGFsb25lIiwiYmFja2dyb3VuZF9jb2xvciI6IiMwZjE3MmEiLCJ0aGVtZV9jb2xvciI6IiM2MzY2ZjEiLCJpY29ucyI6W3sic3JjIjoiaHR0cHM6Ly9jZG4tanRlY2hvbGluZS5jb20vZmlsZXMvZG9jdmlld2VyLWljb24ucG5nIiwic2l6ZXMiOiIxOTJ4MTkyIiwidHlwZSI6ImltYWdlL3BuZyJ9XX0=" />
+  <link rel="manifest" href="data:application/manifest+json;base64,eyJuYW1lIjoiR2VudGxlRG9jIiwic2hvcnRfbmFtZSI6IkdlbnRsZURvYyIsInN0YXJ0X3VybCI6Ii4vIiwiZGlzcGxheSI6InN0YW5kYWxvbmUiLCJiYWNrZ3JvdW5kX2NvbG9yIjoiIzBmMTcyYSIsInRoZW1lX2NvbG9yIjoiIzYzNjZmMSIsImljb25zIjpbeyJzcmMiOiJodHRwczovL2Nkbi1qdGVjaG9saW5lLmNvbS9maWxlcy9kb2N2aWV3ZXItaWNvbi5wbmciLCJzaXplcyI6IjE5MngxOTIiLCJ0eXBlIjoiaW1hZ2UvcG5nIn1dfQ==" />
 
   <!-- Librerías Externas -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
@@ -92,11 +92,12 @@
     main { display: grid; grid-template-rows: 36px 1fr; overflow: hidden; }
     .tab-bar { background: var(--bg-app); border-bottom: 1px solid var(--border); display: flex; align-items: flex-end; padding: 0 8px; gap: 4px; }
     .tabs-container { display: flex; gap: 4px; overflow-x: auto; flex: 1; scrollbar-width: none; }
-    .tab { padding: 6px 16px 6px 12px; background: transparent; color: var(--text-secondary); border-radius: var(--radius-sm) var(--radius-sm) 0 0; font-size: 12px; max-width: 180px; cursor: pointer; border: 1px solid transparent; border-bottom: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; position: relative; }
+    .tab { padding: 6px 10px; background: transparent; color: var(--text-secondary); border-radius: var(--radius-sm) var(--radius-sm) 0 0; font-size: 12px; min-width: 96px; max-width: 220px; cursor: pointer; border: 1px solid transparent; border-bottom: none; display: flex; align-items: center; gap: 6px; }
     .tab:hover { background: var(--bg-hover); }
     .tab.active { background: var(--bg-panel); color: var(--accent); border-color: var(--border); font-weight: 600; border-bottom-color: var(--bg-panel); }
-    .tab .close { margin-left: 8px; opacity: 0; font-size: 14px; }
-    .tab:hover .close { opacity: 1; }
+    .tab-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tab .close { margin-left: auto; opacity: 0.72; font-size: 14px; flex-shrink: 0; }
+    .tab:hover .close, .tab.active .close { opacity: 1; }
     .tab .close:hover { color: var(--error); }
 
     /* Workspace */
@@ -235,7 +236,7 @@
 <body>
   <div id="app-shell">
     <header>
-      <div class="brand"><i class="fa-solid fa-code"></i> Hacker Elegante</div>
+      <div class="brand"><i class="fa-solid fa-file-lines"></i> GentleDoc</div>
       <div class="divider"></div>
       <button onclick="App.instance.openFileDialog()" title="Abrir archivo"><i class="fa-regular fa-folder-open"></i> Abrir</button>
       <button onclick="App.instance.saveCurrent()" title="Guardar cambios"><i class="fa-solid fa-floppy-disk"></i> Guardar</button>
@@ -261,8 +262,8 @@
           <div id="content-scroll" class="content-scroll"></div>
           <div id="welcome-msg" style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--text-muted); flex-direction:column; padding:20px;">
             <i class="fa-solid fa-layer-group" style="font-size:64px; margin-bottom:20px; color:var(--accent);"></i>
-            <h2 style="color:var(--text-primary);">Hacker Elegante Pro</h2>
-            <p style="margin-bottom:20px;">Tu entorno de desarrollo seguro y local</p>
+            <h2 style="color:var(--text-primary);">GentleDoc</h2>
+            <p style="margin-bottom:20px;">Tu editor de documentos rápido y local</p>
             <button onclick="App.instance.openFileDialog()" style="background:var(--accent); color:white; padding:10px 20px; border:none; border-radius:6px; cursor:pointer; font-weight:600; font-size:14px;"><i class="fa-solid fa-folder-open"></i> Abrir Archivos</button>
             <div class="welcome-recents" id="welcome-recents-list"></div>
           </div>
@@ -992,7 +993,7 @@
                 case 'java': content = 'public class Main {\n    public static void main(String[] args) {\n        System.out.println("Hola Mundo desde Java");\n    }\n}'; name = `Main_${ts}.java`; mime = 'text/x-java-source'; break;
                 case 'txt': content = 'Escribe aquí tu texto...'; name = `nota_${ts}.txt`; mime = 'text/plain'; break;
                 default: 
-                    content = `# 🚀 Bienvenido a Hacker Elegante
+                    content = `# 🚀 Bienvenido a GentleDoc
 
 Este es un ejemplo avanzado de **Markdown** con soporte en tiempo real.
 
@@ -1056,7 +1057,28 @@ function saludar() {
             if(statusMeta) statusMeta.textContent = `${(this.activeTab.blob.size / 1024).toFixed(1)} KB`;
         }
 
-        renderTabs() { const c = document.getElementById('tabs'); c.innerHTML = ''; this.openTabs.forEach(t => { const el = document.createElement('div'); el.className = `tab ${this.activeTab?.id === t.id ? 'active' : ''}`; el.innerHTML = `${t.isDirty ? '● ' : ''}${t.name} <span class="close">×</span>`; el.onclick = () => this.activateTab(t.id); el.querySelector('.close').onclick = e => { e.stopPropagation(); this.closeTab(t.id); }; c.appendChild(el); }); }
+        renderTabs() {
+            const c = document.getElementById('tabs');
+            c.innerHTML = '';
+            this.openTabs.forEach(t => {
+                const el = document.createElement('div');
+                el.className = `tab ${this.activeTab?.id === t.id ? 'active' : ''}`;
+
+                const name = document.createElement('span');
+                name.className = 'tab-name';
+                name.textContent = `${t.isDirty ? '● ' : ''}${t.name}`;
+
+                const close = document.createElement('span');
+                close.className = 'close';
+                close.textContent = '×';
+
+                el.appendChild(name);
+                el.appendChild(close);
+                el.onclick = () => this.activateTab(t.id);
+                close.onclick = e => { e.stopPropagation(); this.closeTab(t.id); };
+                c.appendChild(el);
+            });
+        }
         closeTab(id) { this.openTabs = this.openTabs.filter(t => t.id !== id); if(this.activeTab?.id === id) { this.activeTab = this.openTabs[0] || null; if(this.activeTab) this.activateTab(this.activeTab.id); else { document.getElementById('content-scroll').innerHTML = ''; document.getElementById('welcome-msg').classList.remove('hidden'); this.updateRecents(); } } this.renderTabs(); this.saveSession(); }
         
         async updateRecents() { const files = await FileSystem.getAll(); const list = document.getElementById('welcome-recents-list'); list.innerHTML = ''; files.slice(-5).reverse().forEach(f => { const div = document.createElement('div'); div.className = 'welcome-recent-item'; div.innerHTML = `<span><i class="fa-solid fa-file"></i> ${f.name}</span> <span style="font-size:11px;color:gray">${(f.blob.size/1024).toFixed(1)} KB</span>`; div.onclick = () => { if(!this.openTabs.find(t=>t.id===f.id)) this.openTabs.push(f); this.activateTab(f.id); }; list.appendChild(div); }); }
