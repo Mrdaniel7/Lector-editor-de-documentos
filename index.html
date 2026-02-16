@@ -244,6 +244,35 @@
     .shortcut-keys kbd { background: var(--bg-hover); border: 1px solid var(--border); border-radius: 4px; padding: 3px 8px; font-family: var(--font-code); font-size: 11px; color: var(--text-primary); box-shadow: 0 2px 0 var(--bg-app); margin-left: 4px; display: inline-block; }
 
     .hidden { display: none !important; }
+    .settings-grid { display: grid; gap: 14px; }
+    .settings-group { background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+    .settings-group label { display: block; margin-bottom: 8px; font-size: 12px; text-transform: uppercase; color: var(--text-secondary); }
+    .settings-switch { display: flex; justify-content: space-between; align-items: center; gap: 12px; color: var(--text-primary); font-size: 13px; margin-bottom: 8px; }
+    .settings-switch:last-child { margin-bottom: 0; }
+    .settings-help { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
+    [data-contrast="high"] {
+      --bg-app: #000;
+      --bg-panel: #0f0f0f;
+      --bg-header: rgba(0,0,0,0.95);
+      --bg-hover: #1f2937;
+      --bg-input: #050505;
+      --text-primary: #fff;
+      --text-secondary: #d1d5db;
+      --text-muted: #9ca3af;
+      --border: #4b5563;
+      --accent: #60a5fa;
+      --accent-hover: #3b82f6;
+    }
+    [data-motion="reduced"] *, [data-motion="reduced"] *::before, [data-motion="reduced"] *::after {
+      animation: none !important;
+      transition: none !important;
+      scroll-behavior: auto !important;
+    }
+    [data-focus-ring="on"] *:focus-visible {
+      outline: 3px solid var(--accent) !important;
+      outline-offset: 2px;
+      border-radius: 4px;
+    }
     @media (max-width: 768px) { .workspace { grid-template-columns: 1fr; } .sidebar { display: none; } .shortcuts-container { grid-template-columns: 1fr; gap: 20px; } }
   </style>
 </head>
@@ -288,7 +317,7 @@
     <!-- Modals -->
     <div class="cmd-backdrop" id="cmd-backdrop"><div class="cmd-palette"><div class="cmd-input-wrapper"><i class="fa-solid fa-magnifying-glass" style="color:var(--accent)"></i><input type="text" id="cmd-input" placeholder="Comando..." autocomplete="off"></div><ul class="cmd-list" id="cmd-list"></ul></div></div>
     <div class="modal-backdrop" id="generic-modal" style="display:none;"><div class="modal"><div class="modal-header"><span id="generic-modal-title">Título</span><button onclick="UIManager.closeModal()" style="border:none;background:none;color:var(--text-muted);cursor:pointer;"><i class="fa-solid fa-xmark"></i></button></div><div class="modal-body" id="generic-modal-body"></div></div></div>
-    <div class="modal-backdrop" id="settings-modal" style="display:none;"><div class="modal"><div class="modal-header"><span>Configuración</span><button onclick="SettingsManager.close()" style="border:none;background:none;color:var(--text-muted);cursor:pointer;"><i class="fa-solid fa-xmark"></i></button></div><div class="modal-body"><div style="margin-bottom:20px;"><label style="display:block;margin-bottom:8px;font-size:12px;text-transform:uppercase;">Fuente</label><select onchange="SettingsManager.updateFont(this.value)" style="width:100%;padding:8px;background:var(--bg-input);color:white;border:1px solid var(--border);border-radius:6px;"><option value="'JetBrains Mono', monospace">JetBrains Mono</option><option value="'Fira Code', monospace">Fira Code</option></select></div><div style="margin-bottom:20px;"><label style="display:block;margin-bottom:8px;font-size:12px;text-transform:uppercase;">Tamaño</label><input type="range" min="10" max="24" value="14" oninput="SettingsManager.updateFontSize(this.value, 'editor')" style="width:100%;"></div><div style="margin-bottom:20px;"><label style="display:block;margin-bottom:8px;font-size:12px;text-transform:uppercase;">Endpoint Piston (opcional)</label><input id="runner-endpoint-input" type="text" placeholder="https://tu-piston.example/api/v2/execute" onblur="SettingsManager.updateRunnerEndpoint(this.value)" style="width:100%;padding:8px;background:var(--bg-input);color:white;border:1px solid var(--border);border-radius:6px;"><div style="font-size:12px;color:var(--text-muted);margin-top:6px;">La API pública de emkc.org ahora requiere whitelist. Configura aquí tu endpoint propio para compilar y ejecutar.</div></div><div style="margin-bottom:20px;"><label style="display:block;margin-bottom:8px;font-size:12px;text-transform:uppercase;">Endpoint Judge0 (opcional)</label><input id="judge0-endpoint-input" type="text" placeholder="https://ce.judge0.com" onblur="SettingsManager.updateJudge0Endpoint(this.value)" style="width:100%;padding:8px;background:var(--bg-input);color:white;border:1px solid var(--border);border-radius:6px;"><div style="font-size:12px;color:var(--text-muted);margin-top:6px;">Fallback gratuito para Python/Java (requiere que tu instancia permita CORS).</div></div><button onclick="SettingsManager.executePanic()" style="width:100%;padding:12px;background:rgba(239,68,68,0.1);color:var(--error);border:1px solid var(--error);border-radius:8px;cursor:pointer;">Restablecer</button></div></div></div>
+    <div class="modal-backdrop" id="settings-modal" style="display:none;"><div class="modal"><div class="modal-header"><span>Configuración</span><button onclick="SettingsManager.close()" style="border:none;background:none;color:var(--text-muted);cursor:pointer;"><i class="fa-solid fa-xmark"></i></button></div><div class="modal-body"><div class="settings-grid"><div class="settings-group"><label>Tema</label><select id="settings-theme" onchange="SettingsManager.updateTheme(this.value)" style="width:100%;padding:8px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);border-radius:6px;"><option value="dark">Oscuro</option><option value="light">Claro</option></select></div><div class="settings-group"><label>Editor</label><div class="settings-switch"><span>Fuente del código</span><select id="settings-font" onchange="SettingsManager.updateFont(this.value)" style="padding:6px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);border-radius:6px;"><option value="'JetBrains Mono', monospace">JetBrains Mono</option><option value="'Fira Code', monospace">Fira Code</option><option value="'Consolas', monospace">Consolas</option></select></div><div class="settings-switch"><span>Tamaño de letra</span><input id="settings-font-size" type="range" min="12" max="28" value="14" oninput="SettingsManager.updateEditorFontSize(this.value)" style="width:180px;"></div><div class="settings-switch"><span>Ajuste de línea</span><input id="settings-word-wrap" type="checkbox" onchange="SettingsManager.updateEditorSetting('pref_word_wrap', this.checked)"></div><div class="settings-switch"><span>Números de línea</span><input id="settings-line-numbers" type="checkbox" onchange="SettingsManager.updateEditorSetting('pref_line_numbers', this.checked)"></div><div class="settings-switch"><span>Minimapa</span><input id="settings-minimap" type="checkbox" onchange="SettingsManager.updateEditorSetting('pref_minimap', this.checked)"></div></div><div class="settings-group"><label>Accesibilidad</label><div class="settings-switch"><span>Alto contraste</span><input id="settings-high-contrast" type="checkbox" onchange="SettingsManager.updateAccessibilitySetting('pref_high_contrast', this.checked)"></div><div class="settings-switch"><span>Reducir animaciones</span><input id="settings-reduced-motion" type="checkbox" onchange="SettingsManager.updateAccessibilitySetting('pref_reduced_motion', this.checked)"></div><div class="settings-switch"><span>Resaltar foco de teclado</span><input id="settings-focus-ring" type="checkbox" onchange="SettingsManager.updateAccessibilitySetting('pref_focus_ring', this.checked)"></div><div class="settings-help">Estas opciones priorizan legibilidad y navegación con teclado.</div></div><button onclick="SettingsManager.executePanic()" style="width:100%;padding:12px;background:rgba(239,68,68,0.1);color:var(--error);border:1px solid var(--error);border-radius:8px;cursor:pointer;">Restablecer datos locales</button></div></div></div></div>
     <div class="zoom-float" id="zoom-float">100%</div>
 
   <input type="file" id="file-input" class="hidden" multiple />
@@ -344,25 +373,65 @@
 
     class SettingsManager {
         static themeStorageKey = 'pref_theme';
-        static open() { document.getElementById('settings-modal').style.display = 'flex'; }
+        static open() { this.syncSettingsControls(); document.getElementById('settings-modal').style.display = 'flex'; }
         static close() { document.getElementById('settings-modal').style.display = 'none'; }
-        static updateFont(f) { document.documentElement.style.setProperty('--font-code', f); localStorage.setItem('pref_font', f); }
-        static updateFontSize(s, t) { document.documentElement.style.setProperty(t === 'ui' ? '--ui-font-size' : '--editor-font-size', s + 'px'); }
-        static updateRunnerEndpoint(endpoint) {
-            const cleanEndpoint = (endpoint || '').trim().replace(/\/+$/, '');
-            if (cleanEndpoint) {
-                localStorage.setItem('runner_endpoint', cleanEndpoint);
-            } else {
-                localStorage.removeItem('runner_endpoint');
-            }
+        static updateFont(f) { document.documentElement.style.setProperty('--font-code', f); localStorage.setItem('pref_font', f); this.applyEditorPreferences(); }
+        static updateTheme(theme) {
+            const nextTheme = theme === 'light' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', nextTheme);
+            localStorage.setItem(this.themeStorageKey, nextTheme);
         }
-        static updateJudge0Endpoint(endpoint) {
-            const cleanEndpoint = (endpoint || '').trim().replace(/\/+$/, '');
-            if (cleanEndpoint) {
-                localStorage.setItem('judge0_endpoint', cleanEndpoint);
-            } else {
-                localStorage.removeItem('judge0_endpoint');
-            }
+        static updateEditorFontSize(size) {
+            const parsed = Math.min(28, Math.max(12, parseInt(size, 10) || 14));
+            localStorage.setItem('pref_editor_font_size', String(parsed));
+            this.applyEditorPreferences();
+        }
+        static updateEditorSetting(key, enabled) {
+            localStorage.setItem(key, enabled ? '1' : '0');
+            this.applyEditorPreferences();
+        }
+        static updateAccessibilitySetting(key, enabled) {
+            localStorage.setItem(key, enabled ? '1' : '0');
+            this.applyAccessibilityPreferences();
+        }
+        static getEditorPreferences() {
+            const fontSize = Math.min(28, Math.max(12, parseInt(localStorage.getItem('pref_editor_font_size') || '14', 10) || 14));
+            return {
+                fontSize,
+                wordWrap: localStorage.getItem('pref_word_wrap') === '1' ? 'on' : 'off',
+                lineNumbers: localStorage.getItem('pref_line_numbers') === '0' ? 'off' : 'on',
+                minimapEnabled: localStorage.getItem('pref_minimap') === '1'
+            };
+        }
+        static applyEditorPreferences() {
+            if (!window.monaco || !window.App || !App.instance?.currentEditor) return;
+            const prefs = this.getEditorPreferences();
+            App.instance.currentEditor.updateOptions({
+                fontFamily: 'var(--font-code)',
+                fontSize: prefs.fontSize,
+                wordWrap: prefs.wordWrap,
+                lineNumbers: prefs.lineNumbers,
+                minimap: { enabled: prefs.minimapEnabled }
+            });
+        }
+        static applyAccessibilityPreferences() {
+            const root = document.documentElement;
+            root.setAttribute('data-contrast', localStorage.getItem('pref_high_contrast') === '1' ? 'high' : 'normal');
+            root.setAttribute('data-motion', localStorage.getItem('pref_reduced_motion') === '1' ? 'reduced' : 'normal');
+            root.setAttribute('data-focus-ring', localStorage.getItem('pref_focus_ring') === '1' ? 'on' : 'off');
+        }
+        static syncSettingsControls() {
+            const byId = (id) => document.getElementById(id);
+            const prefs = this.getEditorPreferences();
+            if (byId('settings-theme')) byId('settings-theme').value = document.documentElement.getAttribute('data-theme') || 'dark';
+            if (byId('settings-font')) byId('settings-font').value = localStorage.getItem('pref_font') || "'JetBrains Mono', monospace";
+            if (byId('settings-font-size')) byId('settings-font-size').value = String(prefs.fontSize);
+            if (byId('settings-word-wrap')) byId('settings-word-wrap').checked = prefs.wordWrap === 'on';
+            if (byId('settings-line-numbers')) byId('settings-line-numbers').checked = prefs.lineNumbers !== 'off';
+            if (byId('settings-minimap')) byId('settings-minimap').checked = prefs.minimapEnabled;
+            if (byId('settings-high-contrast')) byId('settings-high-contrast').checked = localStorage.getItem('pref_high_contrast') === '1';
+            if (byId('settings-reduced-motion')) byId('settings-reduced-motion').checked = localStorage.getItem('pref_reduced_motion') === '1';
+            if (byId('settings-focus-ring')) byId('settings-focus-ring').checked = localStorage.getItem('pref_focus_ring') === '1';
         }
         static async executePanic() { await FileSystem.clear(); localStorage.clear(); location.reload(); }
         static loadDefaults() {
@@ -372,10 +441,8 @@
             if (savedTheme === 'light' || savedTheme === 'dark') {
                 document.documentElement.setAttribute('data-theme', savedTheme);
             }
-            const endpointInput = document.getElementById('runner-endpoint-input');
-            if (endpointInput) endpointInput.value = localStorage.getItem('runner_endpoint') || '';
-            const judge0Input = document.getElementById('judge0-endpoint-input');
-            if (judge0Input) judge0Input.value = localStorage.getItem('judge0_endpoint') || '';
+            this.applyAccessibilityPreferences();
+            this.syncSettingsControls();
         }
     }
 
@@ -1345,7 +1412,7 @@
             const initialContent = file.contentRef || await file.blob.text();
 
             const editor = monaco.editor.create(ed, {
-                value: initialContent, language: 'html', theme: 'vs-dark', automaticLayout: false, fontFamily: 'var(--font-code)', letterSpacing: 0
+                value: initialContent, language: 'html', theme: 'vs-dark', automaticLayout: false, fontFamily: 'var(--font-code)', letterSpacing: 0, fontSize: SettingsManager.getEditorPreferences().fontSize, wordWrap: SettingsManager.getEditorPreferences().wordWrap, lineNumbers: SettingsManager.getEditorPreferences().lineNumbers, minimap: { enabled: SettingsManager.getEditorPreferences().minimapEnabled }
             });
             const layout = () => requestAnimationFrame(() => editor.layout());
             new ResizeObserver(layout).observe(ed);
@@ -1380,7 +1447,7 @@
             const initialContent = file.contentRef || await file.blob.text();
 
             const editor = monaco.editor.create(ed, {
-                value: initialContent, language: 'markdown', theme: 'vs-dark', automaticLayout: false, fontFamily: 'var(--font-code)', wordWrap: 'on', letterSpacing: 0
+                value: initialContent, language: 'markdown', theme: 'vs-dark', automaticLayout: false, fontFamily: 'var(--font-code)', wordWrap: SettingsManager.getEditorPreferences().wordWrap, letterSpacing: 0, fontSize: SettingsManager.getEditorPreferences().fontSize, lineNumbers: SettingsManager.getEditorPreferences().lineNumbers, minimap: { enabled: SettingsManager.getEditorPreferences().minimapEnabled }
             });
             
             const layout = () => requestAnimationFrame(() => editor.layout());
@@ -1425,7 +1492,7 @@
             const initialContent = file.contentRef || await file.blob.text();
 
             const editor = monaco.editor.create(edDiv, {
-                value: initialContent, language: this.mapLang(ext), theme: 'vs-dark', automaticLayout: false, fontFamily: 'var(--font-code)', letterSpacing: 0
+                value: initialContent, language: this.mapLang(ext), theme: 'vs-dark', automaticLayout: false, fontFamily: 'var(--font-code)', letterSpacing: 0, fontSize: SettingsManager.getEditorPreferences().fontSize, wordWrap: SettingsManager.getEditorPreferences().wordWrap, lineNumbers: SettingsManager.getEditorPreferences().lineNumbers, minimap: { enabled: SettingsManager.getEditorPreferences().minimapEnabled }
             });
             App.instance.currentEditor = editor;
             new ResizeObserver(() => requestAnimationFrame(() => editor.layout())).observe(edDiv);
@@ -1523,8 +1590,6 @@
             openSettingsBtn.onclick = () => {
                 this.closeModal();
                 SettingsManager.open();
-                const endpointInput = document.getElementById('runner-endpoint-input');
-                if (endpointInput) endpointInput.focus();
             };
 
             const closeBtn = document.createElement('button');
