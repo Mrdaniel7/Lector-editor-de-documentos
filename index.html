@@ -341,14 +341,67 @@
         static async execute(language, code) {
             const langMap = { 'java': 'java', 'py': 'python', 'cpp': 'cpp', 'js': 'javascript', 'c': 'c', 'go': 'go', 'cs': 'csharp', 'php': 'php', 'rs': 'rust' };
             const lang = langMap[language] || language;
+            const fileNameByLang = { java: 'Main.java', cpp: 'main.cpp', c: 'main.c', python: 'main.py' };
+            const payload = {
+                language: lang,
+                version: '*',
+                files: [{
+                    name: fileNameByLang[lang],
+                    content: code
+                }]
+            };
+            const endpoints = [
+                'https://emkc.org/api/v2/piston/execute',
+                'https://emkc.org/api/v2/execute',
+                'https://piston.rs/api/v2/execute'
+            ];
+
+            const buildApiError = (status, body, endpoint) => ({
+                stdout: '',
+                stderr: `Error de API (${status}) en ${endpoint}: ${body || 'sin detalles'}`,
+                code: 1
+            });
+
             try {
-                const response = await fetch('https://emkc.org/api/v2/piston/execute', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ language: lang, version: '*', files: [{ content: code }] })
-                });
-                const data = await response.json();
-                return data.run || { stdout: '', stderr: 'Error desconocido en la API' };
-            } catch (e) { return { stdout: '', stderr: 'Error de conexión: ' + e.message }; }
+                for (const endpoint of endpoints) {
+                    try {
+                        const response = await fetch(endpoint, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+
+                        const raw = await response.text();
+                        let data = null;
+                        try { data = raw ? JSON.parse(raw) : null; } catch (_) { data = null; }
+
+                        if (!response.ok) {
+                            if (endpoint !== endpoints[endpoints.length - 1]) continue;
+                            const detail = data?.message || data?.error || data?.detail || raw;
+                            return buildApiError(response.status, detail, endpoint);
+                        }
+
+                        if (data?.run || data?.compile) {
+                            return {
+                                stdout: [data?.compile?.stdout, data?.run?.stdout].filter(Boolean).join(''),
+                                stderr: [data?.compile?.stderr, data?.run?.stderr].filter(Boolean).join(''),
+                                code: data?.run?.code ?? data?.compile?.code ?? 0
+                            };
+                        }
+
+                        const detail = data?.message || data?.error || data?.detail || raw;
+                        if (detail) {
+                            return { stdout: '', stderr: `Error de API: ${detail}`, code: 1 };
+                        }
+                    } catch (_) {
+                        if (endpoint === endpoints[endpoints.length - 1]) throw _;
+                    }
+                }
+
+                return { stdout: '', stderr: 'Error desconocido en la API', code: 1 };
+            } catch (e) {
+                return { stdout: '', stderr: 'Error de conexión: ' + e.message, code: 1 };
+            }
         }
     }
 
@@ -786,7 +839,8 @@
                     const result = await CompilerService.execute(ext, code);
                     if (result.stdout) log(result.stdout);
                     if (result.stderr) log(result.stderr, 'error');
-                    log(`Ejecución ${ext} finalizada. Exit code: ${result.code || 0}`, result.code === 0 ? 'success' : 'error');
+                    const exitCode = Number.isInteger(result.code) ? result.code : (result.stderr ? 1 : 0);
+                    log(`Ejecución ${ext} finalizada. Exit code: ${exitCode}`, exitCode === 0 ? 'success' : 'error');
                 }
                 else { log('Ejecución no soportada para este lenguaje.', 'error'); }
             };
