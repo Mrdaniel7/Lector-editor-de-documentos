@@ -350,19 +350,27 @@
                     content: code
                 }]
             };
-            const baseEndpoints = [
+            const endpointVariants = [
                 'https://emkc.org/api/v2/piston/execute',
-                'https://emkc.org/api/v2/execute',
-                'https://piston.rs/api/v2/execute'
+                'https://emkc.org/api/v2/execute'
             ];
-            const endpointVariants = baseEndpoints.flatMap(endpoint => ([
-                endpoint,
-                `https://corsproxy.io/?${encodeURIComponent(endpoint)}`
-            ]));
+
+            const hintByStatus = (status) => {
+                if (status === 526) {
+                    return ' El proveedor remoto reporta un certificado SSL inválido (526).';
+                }
+                if (status === 429) {
+                    return ' El servicio está limitado por rate limit (429); intenta de nuevo en unos segundos.';
+                }
+                if (status >= 500) {
+                    return ' El proveedor remoto devolvió un error temporal del servidor.';
+                }
+                return '';
+            };
 
             const buildApiError = (status, body, endpoint) => ({
                 stdout: '',
-                stderr: `Error de API (${status}) en ${endpoint}: ${body || 'sin detalles'}`,
+                stderr: `Error de API (${status}) en ${endpoint}: ${body || 'sin detalles'}.${hintByStatus(status)}`,
                 code: 1
             });
 
