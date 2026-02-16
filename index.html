@@ -439,7 +439,8 @@
             const buildApiError = (status, body, endpoint) => ({
                 stdout: '',
                 stderr: `Error de API (${status}) en ${endpoint}: ${body || 'sin detalles'}.${hintByStatus(status)}`,
-                code: 1
+                code: 1,
+                requiresRunnerSetup: status === 401 && endpoint.includes('emkc.org') && !customEndpoint
             });
 
             const parseJsonSafe = (raw) => {
@@ -961,6 +962,7 @@
                     const result = await CompilerService.execute(ext, code);
                     if (result.stdout) log(result.stdout);
                     if (result.stderr) log(result.stderr, 'error');
+                    if (result.requiresRunnerSetup) UIManager.showRunnerSetupModal();
                     const exitCode = Number.isInteger(result.code) ? result.code : (result.stderr ? 1 : 0);
                     log(`Ejecución ${ext} finalizada. Exit code: ${exitCode}`, exitCode === 0 ? 'success' : 'error');
                 }
@@ -1013,6 +1015,39 @@
         
         static closeModal() { document.getElementById('generic-modal').style.display = 'none'; }
         static showModal(title, contentNode) { document.getElementById('generic-modal-title').textContent = title; const body = document.getElementById('generic-modal-body'); body.innerHTML = ''; body.appendChild(contentNode); document.getElementById('generic-modal').style.display = 'flex'; }
+        static showRunnerSetupModal() {
+            const container = document.createElement('div');
+            container.style.display = 'flex';
+            container.style.flexDirection = 'column';
+            container.style.gap = '12px';
+
+            const text = document.createElement('div');
+            text.style.color = 'var(--text-secondary)';
+            text.innerHTML = 'La API pública de <strong>emkc.org</strong> ahora requiere whitelist. Configura tu propio endpoint de Piston para volver a ejecutar código.';
+
+            const actions = document.createElement('div');
+            actions.style.display = 'flex';
+            actions.style.gap = '8px';
+
+            const openSettingsBtn = document.createElement('button');
+            openSettingsBtn.textContent = 'Abrir Ajustes';
+            openSettingsBtn.style.cssText = 'padding:10px 12px;background:var(--accent);color:white;border:none;border-radius:8px;cursor:pointer;';
+            openSettingsBtn.onclick = () => {
+                this.closeModal();
+                SettingsManager.open();
+                const endpointInput = document.getElementById('runner-endpoint-input');
+                if (endpointInput) endpointInput.focus();
+            };
+
+            const closeBtn = document.createElement('button');
+            closeBtn.textContent = 'Cerrar';
+            closeBtn.style.cssText = 'padding:10px 12px;background:transparent;color:var(--text-secondary);border:1px solid var(--border);border-radius:8px;cursor:pointer;';
+            closeBtn.onclick = () => this.closeModal();
+
+            actions.append(openSettingsBtn, closeBtn);
+            container.append(text, actions);
+            this.showModal('Configura endpoint de ejecución', container);
+        }
         
         static selectDraftType() { 
             return new Promise((resolve) => { 
